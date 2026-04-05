@@ -1,0 +1,30 @@
+# Open Arcana: Full Configuration
+# Everything activated. All modules, all hooks, all commands.
+# Good for: power users who want the complete AI-operated vault experience.
+
+version: "1.0.0"
+
+profile:
+  name: "Your Name"
+  role: "Your Role"
+  language: "en"
+  vault_path: "~/Documents/Obsidian/Personal"
+  company: "Your Company"
+  primary_domain: "work"
+  domains: "work,research,content,personal"
+
+integrations:
+  notion_db_id: "your-notion-database-id"
+  user_email: "you@example.com"
+
+modules:
+  anti-sycophancy: true
+  token-efficiency: true
+  enforcement-hooks: true
+  security-hooks: true
+  vault-structure: true
+  retrieval-system: true
+  commands: true
+  connected-sources: true
+  scheduled-tasks: true
+  vault-health: true

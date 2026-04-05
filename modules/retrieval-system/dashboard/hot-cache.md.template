@@ -1,0 +1,31 @@
+# Hot Cache
+
+> Notes injected into context on every session boot. These are your most-accessed, highest-priority notes.
+> Loaded automatically by `session-scan.sh` during SessionStart.
+
+## How to populate
+
+1. **Tier 1 (always loaded):** Notes you reference in >50% of sessions. Max 5 notes.
+2. **Tier 2 (loaded if recent activity):** Notes active this week. Max 10 notes.
+3. **Keep it small.** Every note here costs boot tokens. If you haven't referenced a note in 7+ days, move it out of hot-cache.
+4. **Format:** `[[wikilink]]` with a brief reason for inclusion.
+5. **Review weekly:** during your weekly review, prune stale entries and promote active ones.
+
+## Tier 1 (Critical, always loaded)
+
+<!-- Example: -->
+<!-- - [[Daily-Notes/]] - Current day context -->
+<!-- - [[10-Work/Product/Main Feature]] - Active sprint focus -->
+
+## Tier 2 (Active this week)
+
+<!-- Example: -->
+<!-- - [[60-Research/Current Topic]] - Active research thread -->
+<!-- - [[30-Content/Upcoming Post]] - Content in production -->
+
+## Pruning log
+
+<!-- Track when you last reviewed this file -->
+<!-- | Date | Action | -->
+<!-- |------|--------| -->
+<!-- | YYYY-MM-DD | Initial setup | -->

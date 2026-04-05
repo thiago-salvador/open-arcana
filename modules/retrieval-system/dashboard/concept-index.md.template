@@ -1,0 +1,25 @@
+# Concept Index
+
+> Hash table mapping concepts to vault notes. Layer 1 of the Engram retrieval system.
+> This file enables O(1) lookup: the agent searches here FIRST before grep or semantic search.
+
+## How to populate
+
+1. **One entry per concept.** Each concept maps to one or more vault notes via `[[wikilinks]]`.
+2. **Format:** `| concept keyword | [[Path/To/Note]] | brief description |`
+3. **Include aliases** in the concept column for searchability (e.g., "gamification, gamificacao").
+4. **Cover all domains:** people, projects, research topics, tools, strategies.
+5. **Update when:** creating new notes, renaming notes, archiving notes.
+6. **Negative space matters:** if a concept is NOT in this index, the retrieval system escalates to Layer 2 (grep). Keep this index comprehensive to avoid unnecessary grep calls.
+
+## Index
+
+| Concept | Note | Description |
+|---------|------|-------------|
+| _example: your-concept_ | _[[Path/To/Your Note]]_ | _Brief description of what this note covers_ |
+
+<!-- Add your entries below. Aim for 50+ entries covering all vault domains. -->
+<!-- People: first name, last name, role keywords -->
+<!-- Projects: project name, codename, tech stack keywords -->
+<!-- Research: topic, subtopic, framework names -->
+<!-- Content: series name, platform, recurring themes -->

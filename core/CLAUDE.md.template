@@ -1,0 +1,113 @@
+# CLAUDE.md
+
+Obsidian vault for {{USER_NAME}} ({{USER_ROLE}}{{COMPANY:+ at {{COMPANY}}}}).
+
+## Retrieval System (Engram-inspired)
+
+**Never read the entire vault.** The retrieval system uses hierarchical lookup inspired by the "Conditional Memory via Scalable Lookup" paper (DeepSeek Engram). Scale layers sequentially, stop as soon as resolved.
+
+### Boot (auto-loaded by SessionStart hook)
+- `MEMORY.md` (memory index, auto-loaded by Claude Code memory system)
+- Daily Note for today (create if missing; check current state and pending items)
+- `00-Dashboard/hot-cache.md` (Tier 1+2 notes, injected by session-scan.sh)
+
+### Layer 1: Deterministic Lookup (O(1), on demand)
+- `00-Dashboard/concept-index.md` (hash table: concept -> notes)
+- `00-Dashboard/aliases.md` (term normalization/synonyms for query expansion)
+
+### Layer 2: Filtered Search (when Layer 1 didn't resolve)
+- Define **context vector** (domain, project, phase) before searching
+- `<folder>/index.md` (navigate by structure)
+- `grep` filtered by domain/type, max 5 results
+
+### Layer 3: Semantic Search (last resort)
+- Smart Connections MCP, max 3 results
+- Only when grep returns empty AND concept isn't in the index
+
+### Retrieval Budget: max 20% context window for retrieval, 80% for reasoning.
+
+## Vault Structure
+
+```
+00-Dashboard/          # Entry point, weekly review, dashboards
+10-{{PRIMARY_DOMAIN}}/  # Primary work domain
+30-Content/            # Content production
+40-Partnerships/       # Partnership CRM (1 note per partner)
+50-Events/             # Speaking, events, conferences
+60-Research/           # Trends, references, industry analysis
+70-People/             # Contact network (1 note per person)
+80-Templates/          # Templates for each note type
+85-Rules/              # Code rules, workflows, dev patterns
+90-Archive/            # Completed/archived items
+99-Inbox/              # Staging area for raw material
+Daily-Notes/           # Daily journal (YYYY-MM-DD.md)
+MOCs/                  # Maps of Content (thematic navigation)
+```
+
+## Maintenance Rules
+
+1. **Create/delete a file** -> update `index.md` in the folder
+2. **Every new note** -> complete YAML frontmatter (see below)
+3. **Descriptive names**: `2026-03-04 Partnership Meeting TechCorp.md`, not `meeting.md`
+4. **Atomic notes**: 1 idea, 300-500 words, self-contained
+5. **Archive** -> move to `90-Archive/`, update both index.md files
+
+## Required Frontmatter
+
+```yaml
+---
+title: "Descriptive title"
+summary: "One sentence summarizing the content"
+type: concept | project | reference | meeting | daily | moc | template | person | event | decision | error-solution | devlog | toolbox | knowledge | hub
+domain: {{DOMAINS}}
+tags: []
+status: draft | active | evergreen | paused | completed | archived | superseded | deprecated
+created: YYYY-MM-DD
+---
+```
+
+`summary` is REQUIRED. It's what the agent scans before reading the full file.
+
+## File Format
+
+- `[[wikilinks]]` for internal links
+- `[text](url)` for external URLs
+- `> [!type]` for callouts
+- Tags: `#tag` or `#nested/tag`
+
+## Vault Automation Commands
+
+| Command | What it does | When to use |
+|---------|-------------|-------------|
+| `/start` | Intelligence briefing + Daily Note | Start of day |
+| `/recap` | Summary of today so far (read-only) | Any time |
+| `/end` | Summarize day + decisions + tomorrow | End of day |
+| `/health` | Vault health audit | Part of /weekly or on demand |
+| `/weekly` | 7-day review | Monday |
+| `/dump` | Brain dump with auto-routing | Any time, free-form thinking |
+| `/capture` | Interactive guided note capture | End of work session |
+| `/process` | Process material into atomic notes | After research |
+| `/scan` | Scan files modified outside vault | Start of session |
+| `/connections` | Discover cross-domain links | Part of maintenance |
+| `/link-check` | Insert missing wikilinks in recent notes | After creating notes |
+| `/contrarian` | Check for excessive agreement, unverified facts | Part of /weekly |
+
+## Cross-Domain Connections
+
+When creating or updating notes:
+1. Search for **cross-domain** connections (research <-> content <-> events <-> work)
+2. Add bidirectional wikilinks
+3. Highlight productive tensions between domains (these are content hooks)
+
+## Large File Reading
+
+When reading any file, if you suspect it may have >2000 lines, use `offset` and `limit` to read in chunks. The Read tool has a silent limit of 2000 lines per call. For large files:
+1. Check the size first: `wc -l <file>`
+2. If >2000 lines, read in chunks of 1500 using `offset` and `limit`
+3. Never assume a single read captured the complete file
+
+## Tools
+
+- **Obsidian MCP** (read/write notes)
+- **Smart Connections MCP** (semantic search, Layer 3 of retrieval)
+- **Templates** in `80-Templates/`

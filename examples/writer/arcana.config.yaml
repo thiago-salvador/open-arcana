@@ -1,0 +1,30 @@
+# Open Arcana: Writer Configuration
+# Core + vault structure + commands + retrieval.
+# Good for: knowledge workers who use Obsidian as their primary thinking tool.
+
+version: "1.0.0"
+
+profile:
+  name: "Your Name"
+  role: "Writer"
+  language: "en"
+  vault_path: "~/Documents/Obsidian/Personal"
+  company: ""
+  primary_domain: "writing"
+  domains: "writing,research,personal"
+
+integrations:
+  notion_db_id: ""
+  user_email: ""
+
+modules:
+  anti-sycophancy: true
+  token-efficiency: true
+  enforcement-hooks: true
+  security-hooks: false
+  vault-structure: true
+  retrieval-system: true
+  commands: true
+  connected-sources: false
+  scheduled-tasks: false
+  vault-health: true

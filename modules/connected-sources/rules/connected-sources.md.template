@@ -1,0 +1,54 @@
+---
+description: "External data sources and cross-referencing rules"
+---
+
+# Connected Sources (via MCPs + CLIs)
+
+| Source | MCP | When to use |
+|--------|-----|-------------|
+| Obsidian Vault | Read/Write/Grep + ob-smart-connections | ALWAYS, source of truth |
+| Notion | `mcp__notion__*` (plugin) + `notionApi` (settings.json) | Tasks, databases |
+| MS Calendar | microsoft-graph-mcp | Work meetings, agenda |
+| Teams Chats | microsoft-graph-mcp | Work context, decisions |
+| Outlook | microsoft-graph-mcp | Work communications (FILTER spam/sales) |
+| Read.AI | read-ai MCP | Meeting transcriptions |
+| Google Calendar | gcal MCP | Personal/secondary agenda |
+| Gmail | gmail MCP | Personal emails |
+| iMessages | iMessages MCP | Personal communications |
+| GitHub | `gh` CLI | Code, projects |
+| Apple Notes | Apple Notes MCP | Quick notes, mobile capture |
+| YouTube / 1800+ sites | yt-dlp (CLI) | Subtitles, metadata, transcripts |
+| RSS/Atom feeds | feedparser (Python lib) | News feeds, blogs |
+| Twitter/X | bird CLI (cookies) | Search, read, timeline, threads |
+| LinkedIn | linkedin-scraper-mcp (MCP) | Profiles, companies, jobs, search |
+| draw.io | drawio MCP (HTTP, mcp.draw.io/mcp) | Interactive inline diagrams |
+| Figma | Figma MCP (plugin) | Design context, screenshots, Code Connect |
+
+## Cross-referencing Rules
+
+- **Work context**: Teams + Outlook + MS Calendar + Read.AI + Notion + vault `10-Work/`
+- **People context**: vault `70-People/` + iMessages + Gmail + Teams + LinkedIn
+- **Meetings context**: Read.AI + Google Cal + MS Calendar + vault Meetings/
+- **Content context**: vault `30-Content/` + Notion ideas + Gmail + Twitter + YouTube
+
+## Known Issues
+
+### Notion MCP
+- If using multiple Notion MCPs (e.g., plugin + legacy notionApi), they may access different database copies.
+- **Task database ID:** `{{NOTION_DB_ID}}`
+- Track which MCP has access to your real database vs. copies.
+- Status property values vary by setup (e.g., `Done`, `Ongoing`, `In Progress`).
+
+### MCP Scoping
+- **Global** (`~/.claude/settings.json`): filesystem, memory, sequential-thinking
+- **Project** (`.mcp.json`): microsoft-graph, notionApi, playwright
+- **User-scope** (`claude mcp add --scope user`): linkedin, ob-smart-connections, read-ai
+- Adjust scoping based on which MCPs you need globally vs. per-project.
+
+### Microsoft Graph
+- Server path: `{{MS_GRAPH_MCP_PATH}}`
+- Token expires in long sessions (~1h). If you get 401/403 on Teams/Outlook/Calendar: token expired. Workaround: restart session or re-auth.
+- Calendars.ReadWrite is active (POST to create events). Created events are always personal.
+
+### Email Filtering
+- SKIP emails from spam, cold outreach, sales. Criteria: generic sales subject, unknown sender with no prior context, unsolicited newsletters.

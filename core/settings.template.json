@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": []
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash {{VAULT_PATH}}/.claude/hooks/session-scan.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash {{VAULT_PATH}}/.claude/hooks/read-alerts.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [],
+    "PostToolUse": [],
+    "PreCompact": []
+  }
+}

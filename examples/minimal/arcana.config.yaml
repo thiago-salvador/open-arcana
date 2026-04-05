@@ -1,0 +1,30 @@
+# Open Arcana: Minimal Configuration
+# Core rules + memory system only. No vault structure, no commands.
+# Good for: adding AI guardrails to any existing Claude Code project.
+
+version: "1.0.0"
+
+profile:
+  name: "Your Name"
+  role: "Your Role"
+  language: "en"
+  vault_path: "~/Documents/Obsidian/Personal"
+  company: ""
+  primary_domain: "work"
+  domains: "work,personal"
+
+integrations:
+  notion_db_id: ""
+  user_email: ""
+
+modules:
+  anti-sycophancy: false
+  token-efficiency: false
+  enforcement-hooks: false
+  security-hooks: false
+  vault-structure: false
+  retrieval-system: false
+  commands: false
+  connected-sources: false
+  scheduled-tasks: false
+  vault-health: false

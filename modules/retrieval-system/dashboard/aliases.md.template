@@ -1,0 +1,35 @@
+# Aliases
+
+> Normalizes synonyms, abbreviations, and informal names to canonical terms.
+> Layer 1 companion to `concept-index.md`. The agent checks both during retrieval.
+
+## How to populate
+
+1. **Group aliases by canonical concept.** Each group has one canonical name and multiple aliases.
+2. **Format:**
+   ```
+   ## Canonical Name
+   - alias1
+   - alias2
+   - alias3
+   → Resolves to: [[Path/To/Note]]
+   ```
+3. **Include:** nicknames, abbreviations, translations, informal references, role-based lookups (e.g., "CEO" -> person name).
+4. **Update when:** new people join, projects get renamed, new slang emerges in meetings.
+
+## Alias Groups
+
+<!-- Example group (delete and replace with your own): -->
+
+### Example Project
+- project-x
+- px
+- the main project
+-> Resolves to: [[15-Projects/Example Project]]
+
+<!-- Add your alias groups below. -->
+<!-- Tips: -->
+<!--   - People: include first name, last name, nickname, role ("CEO", "designer") -->
+<!--   - Projects: include codename, abbreviation, informal name -->
+<!--   - Concepts: include translations (if multilingual vault), acronyms -->
+<!--   - Tools: include CLI name, full product name, common misspellings -->
