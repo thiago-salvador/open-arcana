@@ -5,18 +5,32 @@ set -euo pipefail
 # Compatible with bash 3.2+ (macOS default)
 VERSION="1.0.2"
 
-# ── Colors ─────────────────────────────────────────────────────────
-BOLD='\033[1m'
-DIM='\033[2m'
-CYAN='\033[1;36m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-RED='\033[0;31m'
-RESET='\033[0m'
+# ── Colors & Styles ───────────────────────────────────────
+BOLD=$'\033[1m'
+DIM=$'\033[2m'
+ITALIC=$'\033[3m'
+WHITE=$'\033[1;37m'
+CYAN=$'\033[1;36m'
+MAGENTA=$'\033[1;35m'
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[0;33m'
+RED=$'\033[0;31m'
+DIM_WHITE=$'\033[2;37m'
+DIM_CYAN=$'\033[2;36m'
+RESET=$'\033[0m'
+
+# Detect color support
+if [[ ! -t 1 ]] || [[ "${NO_COLOR:-}" != "" ]]; then
+  BOLD='' DIM='' ITALIC='' WHITE='' CYAN='' MAGENTA=''
+  GREEN='' YELLOW='' RED='' DIM_WHITE='' DIM_CYAN='' RESET=''
+  NO_ANIM=true
+else
+  NO_ANIM=false
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# ── Module registry (indexed arrays, bash 3.2 compatible) ─────────
+# ── Module registry (indexed arrays, bash 3.2 compatible) ─
 MODULE_KEYS=(anti-sycophancy token-efficiency enforcement-hooks security-hooks vault-structure retrieval-system commands connected-sources scheduled-tasks vault-health)
 
 MODULE_NAMES=(
@@ -38,7 +52,7 @@ MODULE_DESCS=(
   "Validates frontmatter, enforces daily notes, checks writes."
   "Blocks prompt injection in memory files, guards people data."
   "Opinionated folder structure with 18 note templates."
-  "4-layer lookup: concept-index > grep > semantic > fallback."
+  "4-layer lookup inspired by DeepSeek's Engram paper."
   "/start, /end, /weekly, /health, /dump, /capture, and more."
   "Template for orchestrating 16+ MCP data sources."
   "Templates for morning briefing, end-of-day, weekly review."
@@ -72,7 +86,39 @@ INSTALLED_FILES=0
 INSTALLED_HOOKS=0
 INSTALLED_COMMANDS=0
 
-# ── Helpers ────────────────────────────────────────────────────────
+# ── Terminal helpers ──────────────────────────────────────
+
+term_width() {
+  local w
+  w=$(tput cols 2>/dev/null || echo 80)
+  echo "$w"
+}
+
+center_text() {
+  local text="$1" width
+  width=$(term_width)
+  # Strip ANSI codes for length calculation
+  local stripped
+  stripped=$(printf '%s' "$text" | sed 's/\x1b\[[0-9;]*m//g')
+  local len=${#stripped}
+  local pad=$(( (width - len) / 2 ))
+  if [[ $pad -lt 0 ]]; then pad=0; fi
+  printf '%*s' "$pad" ''
+  printf '%s' "$text"
+}
+
+center_line() {
+  center_text "$1"
+  echo ""
+}
+
+anim_delay() {
+  if ! $NO_ANIM; then
+    sleep "${1:-0.04}"
+  fi
+}
+
+# ── Helpers ───────────────────────────────────────────────
 
 get_cat_indices() {
   case $1 in
@@ -81,29 +127,69 @@ get_cat_indices() {
   esac
 }
 
-print_header() {
+ray_separator() {
+  local w
+  w=$(term_width)
+  local dots=""
+  local count=$(( w / 3 ))
+  local i
+  for ((i=0; i<count; i++)); do
+    dots+="$DIM_CYAN.  $RESET"
+  done
   echo ""
-  echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
-  echo -e "${CYAN}  $1${RESET}"
-  echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+  center_line "$dots"
+  echo ""
+}
+
+mini_header() {
+  local step=$1 total=$2
+  local w
+  w=$(term_width)
+  local left="${DIM_WHITE}  ${RESET}${MAGENTA}◈${RESET}${DIM_WHITE} OPEN ARCANA ${RESET}"
+  local right="${DIM_WHITE}Step ${step} of ${total}${RESET}"
+  local left_stripped="  ◈ OPEN ARCANA "
+  local right_stripped="Step ${step} of ${total}"
+  local dashes_count=$(( w - ${#left_stripped} - ${#right_stripped} - 2 ))
+  if [[ $dashes_count -lt 4 ]]; then dashes_count=4; fi
+  local dashes=""
+  local i
+  for ((i=0; i<dashes_count; i++)); do dashes+="─"; done
+  echo ""
+  echo -e "${left}${DIM}${dashes}${RESET} ${right}"
+  echo ""
 }
 
 print_progress() {
   local step=$1 total=$2
+  local w
+  w=$(term_width)
+  local bar_width=$(( w - 14 ))
+  if [[ $bar_width -gt 50 ]]; then bar_width=50; fi
+  local filled=$(( step * bar_width / total ))
+  local empty=$(( bar_width - filled ))
   local pct=$(( step * 100 / total ))
-  local filled=$(( step * 20 / total ))
-  local empty=$(( 20 - filled ))
+
   local bar=""
   local i
-  for ((i=0; i<filled; i++)); do bar+="█"; done
-  for ((i=0; i<empty; i++)); do bar+="░"; done
-  echo -e "  ${DIM}[${bar}] ${pct}%${RESET}"
+  # Gradient: first third white, second third cyan, last third magenta
+  local third=$(( filled / 3 ))
+  if [[ $third -lt 1 ]] && [[ $filled -gt 0 ]]; then third=1; fi
+  local seg1=$third
+  local seg2=$third
+  local seg3=$(( filled - seg1 - seg2 ))
+
+  for ((i=0; i<seg1; i++)); do bar+="${WHITE}━${RESET}"; done
+  for ((i=0; i<seg2; i++)); do bar+="${CYAN}━${RESET}"; done
+  for ((i=0; i<seg3; i++)); do bar+="${MAGENTA}━${RESET}"; done
+  for ((i=0; i<empty; i++)); do bar+="${DIM}░${RESET}"; done
+
+  echo -e "  ${MAGENTA}◈${RESET}${bar} ${DIM}${pct}%${RESET}"
   echo ""
 }
 
-hint()    { echo -e "    ${DIM}⚡ $1${RESET}"; }
-success() { echo -e "  ${GREEN}→ $1${RESET}  ${GREEN}✓${RESET}"; }
-error()   { echo -e "  ${RED}✗ $1${RESET}"; }
+hint()    { echo -e "    ${DIM_CYAN}$1${RESET}"; }
+success() { echo -e "  ${MAGENTA}◈${RESET}${DIM}────${RESET} $1  ${GREEN}✓${RESET}"; }
+error()   { echo -e "  ${RED}✗${RESET} $1"; }
 
 ask() {
   local prompt=$1 default=${2:-""} var_name=$3
@@ -123,15 +209,14 @@ ask() {
 ask_yn() {
   local prompt=$1 default=${2:-"Y"} var_name=$3
   if [[ "$default" == "Y" ]]; then
-    echo -ne "    ${BOLD}[Y/n]${RESET} ${BOLD}$prompt${RESET} "
+    echo -ne "    ${DIM}[Y/n]${RESET} ${BOLD}$prompt${RESET} "
   else
-    echo -ne "    ${BOLD}[y/N]${RESET} ${BOLD}$prompt${RESET} "
+    echo -ne "    ${DIM}[y/N]${RESET} ${BOLD}$prompt${RESET} "
   fi
   local input
   read -r input
   input="${input:-$default}"
   input=$(echo "$input" | tr '[:lower:]' '[:upper:]')
-  # Only accept Y or N
   if [[ "$input" != "Y" && "$input" != "N" ]]; then
     input="$default"
   fi
@@ -148,20 +233,72 @@ validate_path() {
   echo "$path"
 }
 
+# ── Cinematic Splash ─────────────────────────────────────
+
 splash() {
   clear 2>/dev/null || true
+
+  local w
+  w=$(term_width)
+
+  # Blank space for dramatic effect
   echo ""
-  echo -e "${CYAN}╔══════════════════════════════════════════════╗${RESET}"
-  echo -e "${CYAN}║                                              ║${RESET}"
-  echo -e "${CYAN}║     ${BOLD}◆  O P E N   A R C A N A  ◆${RESET}${CYAN}             ║${RESET}"
-  echo -e "${CYAN}║                                              ║${RESET}"
-  echo -e "${CYAN}║     AI Agent Orchestration Framework         ║${RESET}"
-  echo -e "${CYAN}║     for Obsidian + Claude Code               ║${RESET}"
-  echo -e "${CYAN}║                                              ║${RESET}"
-  echo -e "${CYAN}║     v${VERSION}                                   ║${RESET}"
-  echo -e "${CYAN}║                                              ║${RESET}"
-  echo -e "${CYAN}╚══════════════════════════════════════════════╝${RESET}"
   echo ""
+  echo ""
+  echo ""
+  echo ""
+  echo ""
+
+  local line_text="─────────────────"
+
+  if ! $NO_ANIM; then
+    # Frame 1: Line draws from center
+    center_line "${CYAN}${line_text}${RESET}"
+    anim_delay 0.3
+
+    # Frame 2: "arcana" types below
+    local partial=""
+    local chars=("a" " " " " "r" " " " " "c" " " " " "a" " " " " "n" " " " " "a")
+    printf '\033[1A'  # Move up 1 line
+    center_line "${CYAN}${line_text}${RESET}"
+    for ch in "${chars[@]}"; do
+      partial+="$ch"
+      printf '\r'
+      center_text "${WHITE}${BOLD}${partial}${RESET}"
+      anim_delay 0.04
+    done
+    echo ""
+
+    anim_delay 0.2
+
+    # Frame 3: "open" appears above
+    printf '\033[2A'  # Up 2
+    center_line "${DIM_WHITE}o  p  e  n${RESET}"
+    center_line "${CYAN}${line_text}${RESET}"
+    center_line "${WHITE}${BOLD}a  r  c  a  n  a${RESET}"
+
+    anim_delay 0.4
+  else
+    # Static mode: print in correct order, no cursor movement
+    center_line "${DIM_WHITE}o  p  e  n${RESET}"
+    center_line "${CYAN}${line_text}${RESET}"
+    center_line "${WHITE}${BOLD}a  r  c  a  n  a${RESET}"
+  fi
+
+  # Frame 4: Tagline + version
+  echo ""
+  center_line "${DIM_CYAN}AI Agent Orchestration Framework${RESET}"
+
+  if ! $NO_ANIM; then
+    anim_delay 0.2
+  fi
+
+  center_line "${DIM}Obsidian + Claude Code  ·  v${VERSION}${RESET}"
+
+  echo ""
+  echo ""
+
+  anim_delay 0.6
 }
 
 cleanup() {
@@ -179,10 +316,9 @@ derive_memory_dir() {
   echo "$HOME/.claude/projects/${encoded_path}/memory"
 }
 
-# ── Template processing ───────────────────────────────────────────
+# ── Template processing ──────────────────────────────────
 
 escape_sed() {
-  # Escape characters that are special in sed replacement strings
   printf '%s' "$1" | sed -e 's/[&/\]/\\&/g'
 }
 
@@ -191,7 +327,6 @@ process_template() {
   mkdir -p "$(dirname "$dst")"
   cp "$src" "$dst"
 
-  # Escape all values for safe sed replacement (handles / | & \ in paths)
   local e_name e_role e_lang e_vault e_mem e_notion e_email e_domain e_company e_domains
   e_name=$(escape_sed "$USER_NAME")
   e_role=$(escape_sed "$USER_ROLE")
@@ -227,7 +362,7 @@ copy_file() {
   INSTALLED_FILES=$((INSTALLED_FILES + 1))
 }
 
-# ── Install core ──────────────────────────────────────────────────
+# ── Install core ─────────────────────────────────────────
 
 install_core() {
   local target="$VAULT_PATH/.claude"
@@ -239,10 +374,10 @@ install_core() {
   fi
 
   process_template "$SCRIPT_DIR/core/CLAUDE.md.template" "$VAULT_PATH/CLAUDE.md"
-  success "Processing CLAUDE.md template..."
+  success "Processing CLAUDE.md template"
 
   copy_file "$SCRIPT_DIR/core/rules/core-rules.md" "$target/rules/core-rules.md"
-  success "Creating .claude/rules/..."
+  success "Creating .claude/rules/"
 
   for hook in "$SCRIPT_DIR"/core/hooks/*.sh; do
     local name
@@ -251,19 +386,19 @@ install_core() {
     chmod +x "$target/hooks/$name"
     INSTALLED_HOOKS=$((INSTALLED_HOOKS + 1))
   done
-  success "Creating .claude/hooks/..."
+  success "Creating .claude/hooks/"
 
   process_template "$SCRIPT_DIR/core/settings.template.json" "$target/settings.local.json"
-  success "Wiring hooks into settings.json..."
+  success "Wiring hooks into settings.json"
 
   mkdir -p "$MEMORY_DIR" 2>/dev/null || true
   if [[ -d "$MEMORY_DIR" ]]; then
     process_template "$SCRIPT_DIR/core/memory/MEMORY.md.template" "$MEMORY_DIR/MEMORY.md"
   fi
-  success "Setting up memory system..."
+  success "Setting up memory system"
 }
 
-# ── Install module ────────────────────────────────────────────────
+# ── Install module ───────────────────────────────────────
 
 install_module() {
   local module=$1
@@ -371,10 +506,10 @@ install_module() {
     fi
   done
 
-  success "Installing ${display_name}..."
+  success "Installing ${display_name}"
 }
 
-# ── Generate config ───────────────────────────────────────────────
+# ── Generate config ──────────────────────────────────────
 
 generate_config() {
   local config_path="$VAULT_PATH/.claude/arcana.config.yaml"
@@ -409,53 +544,132 @@ YAML
     fi
   done
 
-  success "Generating arcana.config.yaml..."
+  success "Generating arcana.config.yaml"
 }
 
-# ── Summary ───────────────────────────────────────────────────────
+# ── Portal Reveal Summary ────────────────────────────────
 
 print_summary() {
+  local w
+  w=$(term_width)
+  local inner=$(( w - 4 ))
+  if [[ $inner -gt 60 ]]; then inner=60; fi
+
+  # Build dot border
+  local dot_line=""
+  local i
+  local dot_count=$(( inner / 2 ))
+  for ((i=0; i<dot_count; i++)); do dot_line+=". "; done
+
   echo ""
-  echo -e "${GREEN}╔══════════════════════════════════════════════╗${RESET}"
-  echo -e "${GREEN}║     ✓  Installation Complete!                ║${RESET}"
-  echo -e "${GREEN}╚══════════════════════════════════════════════╝${RESET}"
   echo ""
-  echo -e "  Profile:    ${BOLD}${USER_NAME}${RESET} (${USER_ROLE})"
-  echo -e "  Vault:      ${BOLD}${VAULT_PATH}${RESET}"
-  echo -e "  Language:   ${BOLD}${USER_LANG}${RESET}"
-  echo ""
-  echo -e "  Modules installed:"
+
+  # Top border (animated)
+  if ! $NO_ANIM; then
+    local partial=""
+    for ((i=0; i<dot_count; i++)); do
+      partial+=". "
+      printf '\r'
+      center_text "  ${MAGENTA}${partial}${RESET}"
+      anim_delay 0.02
+    done
+    echo ""
+  else
+    center_line "  ${MAGENTA}${dot_line}${RESET}"
+  fi
+
+  # Title
+  center_line "  ${MAGENTA}.${RESET}$(printf '%*s' $(( inner - 2 )) '')${MAGENTA}.${RESET}"
+
+  local title="T H E   V A U L T   I S   O P E N"
+  center_line "  ${MAGENTA}.${RESET}     ${WHITE}${BOLD}${title}${RESET}$(printf '%*s' $(( inner - ${#title} - 7 )) '')${MAGENTA}.${RESET}"
+
+  center_line "  ${MAGENTA}.${RESET}$(printf '%*s' $(( inner - 2 )) '')${MAGENTA}.${RESET}"
+
+  # Separator
+  local sep=""
+  for ((i=0; i<inner-8; i++)); do sep+="─"; done
+  center_line "  ${MAGENTA}.${RESET}    ${DIM}${sep}${RESET}    ${MAGENTA}.${RESET}"
+
+  center_line "  ${MAGENTA}.${RESET}$(printf '%*s' $(( inner - 2 )) '')${MAGENTA}.${RESET}"
+
+  # Profile info
+  printf '  '
+  center_text "${MAGENTA}.${RESET}    ${DIM}Profile${RESET}     ${BOLD}${USER_NAME}${RESET} (${USER_ROLE})"
+  local profile_text="    Profile     ${USER_NAME} (${USER_ROLE})"
+  local pad_r=$(( inner - ${#profile_text} - 2 ))
+  if [[ $pad_r -gt 0 ]]; then printf '%*s' "$pad_r" ''; fi
+  echo -e "${MAGENTA}.${RESET}"
+
+  printf '  '
+  center_text "${MAGENTA}.${RESET}    ${DIM}Vault${RESET}       ${BOLD}${VAULT_PATH}${RESET}"
+  local vault_display="${VAULT_PATH/#$HOME/~}"
+  local vault_text="    Vault       ${vault_display}"
+  pad_r=$(( inner - ${#vault_text} - 2 ))
+  if [[ $pad_r -gt 0 ]]; then printf '%*s' "$pad_r" ''; fi
+  echo -e "${MAGENTA}.${RESET}"
+
+  printf '  '
+  center_text "${MAGENTA}.${RESET}    ${DIM}Language${RESET}    ${BOLD}${USER_LANG}${RESET}"
+  local lang_text="    Language    ${USER_LANG}"
+  pad_r=$(( inner - ${#lang_text} - 2 ))
+  if [[ $pad_r -gt 0 ]]; then printf '%*s' "$pad_r" ''; fi
+  echo -e "${MAGENTA}.${RESET}"
+
+  center_line "  ${MAGENTA}.${RESET}$(printf '%*s' $(( inner - 2 )) '')${MAGENTA}.${RESET}"
+
+  # Modules
+  center_line "  ${MAGENTA}.${RESET}    ${BOLD}Modules${RESET}$(printf '%*s' $(( inner - 13 )) '')${MAGENTA}.${RESET}"
 
   local idx
   for idx in "${!MODULE_KEYS[@]}"; do
-    local mark
+    local mark mark_text
     if [[ "${MODULE_ACTIVE[$idx]}" == "Y" ]]; then
-      mark="${GREEN}✓${RESET}"
+      mark="${GREEN}◈${RESET}"
+      mark_text="◈ ${MODULE_NAMES[$idx]}"
     else
-      mark="${DIM}✗${RESET}"
+      mark="${DIM}·${RESET}"
+      mark_text="· ${MODULE_NAMES[$idx]}"
+      mark_text+="  (skipped)"
     fi
-    printf "    %b %-35s\n" "$mark" "${MODULE_NAMES[$idx]}"
+    local line_text="      ${mark_text}"
+    pad_r=$(( inner - ${#line_text} - 2 ))
+    if [[ $pad_r -lt 0 ]]; then pad_r=0; fi
+    echo -e "  ${MAGENTA}.${RESET}      ${mark} ${MODULE_NAMES[$idx]}$(if [[ "${MODULE_ACTIVE[$idx]}" != "Y" ]]; then echo -e "  ${DIM}(skipped)${RESET}"; fi)$(printf '%*s' "$pad_r" '')${MAGENTA}.${RESET}"
   done
 
+  center_line "  ${MAGENTA}.${RESET}$(printf '%*s' $(( inner - 2 )) '')${MAGENTA}.${RESET}"
+
+  # Separator
+  center_line "  ${MAGENTA}.${RESET}    ${DIM}${sep}${RESET}    ${MAGENTA}.${RESET}"
+
+  center_line "  ${MAGENTA}.${RESET}$(printf '%*s' $(( inner - 2 )) '')${MAGENTA}.${RESET}"
+
+  # Stats
+  local stats="${INSTALLED_FILES} files  ·  ${INSTALLED_HOOKS} hooks  ·  ${INSTALLED_COMMANDS} commands"
+  local stats_text="     ${stats}"
+  pad_r=$(( inner - ${#stats_text} - 2 ))
+  if [[ $pad_r -lt 0 ]]; then pad_r=0; fi
+  echo -e "  ${MAGENTA}.${RESET}     ${BOLD}${INSTALLED_FILES}${RESET} files  ${DIM}·${RESET}  ${BOLD}${INSTALLED_HOOKS}${RESET} hooks  ${DIM}·${RESET}  ${BOLD}${INSTALLED_COMMANDS}${RESET} commands$(printf '%*s' "$pad_r" '')${MAGENTA}.${RESET}"
+
+  center_line "  ${MAGENTA}.${RESET}$(printf '%*s' $(( inner - 2 )) '')${MAGENTA}.${RESET}"
+
+  # Next steps
+  echo -e "  ${MAGENTA}.${RESET}    ${CYAN}Next:${RESET}$(printf '%*s' $(( inner - 11 )) '')${MAGENTA}.${RESET}"
+  echo -e "  ${MAGENTA}.${RESET}      1. Open Claude Code in your vault$(printf '%*s' $(( inner - 42 )) '')${MAGENTA}.${RESET}"
+  echo -e "  ${MAGENTA}.${RESET}      2. Run ${BOLD}/health${RESET} to verify$(printf '%*s' $(( inner - 33 )) '')${MAGENTA}.${RESET}"
+  echo -e "  ${MAGENTA}.${RESET}      3. Run ${BOLD}/start${RESET} to begin$(printf '%*s' $(( inner - 32 )) '')${MAGENTA}.${RESET}"
+
+  center_line "  ${MAGENTA}.${RESET}$(printf '%*s' $(( inner - 2 )) '')${MAGENTA}.${RESET}"
+
+  # Bottom border
+  center_line "  ${MAGENTA}${dot_line}${RESET}"
+
   echo ""
-  echo -e "  Files created:  ${BOLD}${INSTALLED_FILES}${RESET}"
-  echo -e "  Hooks wired:    ${BOLD}${INSTALLED_HOOKS}${RESET}"
-  echo -e "  Commands added: ${BOLD}${INSTALLED_COMMANDS}${RESET}"
-  echo -e "  Config:         ${BOLD}${VAULT_PATH}/.claude/arcana.config.yaml${RESET}"
-  echo ""
-  echo -e "  ${CYAN}◆${RESET} Next steps:"
-  echo "    1. Open a Claude Code session in your vault"
-  echo "    2. Run /health to verify everything works"
-  echo "    3. Run /start to begin your first AI-assisted day"
-  echo ""
-  echo -e "  ${CYAN}◆${RESET} Manage modules later:"
-  echo "    ./setup.sh --add <module>"
-  echo "    ./setup.sh --remove <module>"
-  echo "    ./setup.sh --list"
   echo ""
 }
 
-# ── Presets ────────────────────────────────────────────────────────
+# ── Presets ───────────────────────────────────────────────
 
 apply_preset() {
   local preset=$1
@@ -482,7 +696,7 @@ apply_preset() {
   esac
 }
 
-# ── Parse arguments ───────────────────────────────────────────────
+# ── Parse arguments ──────────────────────────────────────
 
 PRESET=""
 DRY_RUN=false
@@ -496,35 +710,38 @@ while [[ $# -gt 0 ]]; do
     --yes|-y)  AUTO_YES=true; shift ;;
     --list)    LIST_MODULES=true; shift ;;
     --help|-h)
-      echo "Open Arcana Setup v${VERSION}"
       echo ""
-      echo "Usage: ./setup.sh [options]"
+      echo -e "${BOLD}Open Arcana Setup${RESET} v${VERSION}"
       echo ""
-      echo "Options:"
-      echo "  --preset <name>    Use preset (minimal, writer, full)"
-      echo "  --yes, -y          Accept all defaults"
-      echo "  --dry-run          Show what would be installed"
-      echo "  --list             Show available modules"
-      echo "  --help, -h         Show this help"
+      echo "  Usage: ./setup.sh [options]"
+      echo ""
+      echo "  Options:"
+      echo "    --preset <name>    Use preset (minimal, writer, full)"
+      echo "    --yes, -y          Accept all defaults"
+      echo "    --dry-run          Show what would be installed"
+      echo "    --list             Show available modules"
+      echo "    --help, -h         Show this help"
+      echo ""
       exit 0
       ;;
     *) error "Unknown option: $1"; exit 1 ;;
   esac
 done
 
-# ── List mode ─────────────────────────────────────────────────────
+# ── List mode ────────────────────────────────────────────
 
 if $LIST_MODULES; then
-  echo "Open Arcana Modules:"
   echo ""
-  local idx
+  echo -e "${BOLD}Open Arcana Modules${RESET}"
+  echo ""
   for idx in "${!MODULE_KEYS[@]}"; do
-    echo "  ${MODULE_KEYS[$idx]}: ${MODULE_NAMES[$idx]}"
+    echo -e "  ${MAGENTA}◈${RESET} ${BOLD}${MODULE_KEYS[$idx]}${RESET}: ${MODULE_NAMES[$idx]}"
   done
+  echo ""
   exit 0
 fi
 
-# ── Main flow ─────────────────────────────────────────────────────
+# ── Main flow ────────────────────────────────────────────
 
 splash
 
@@ -533,7 +750,9 @@ if [[ -n "$PRESET" ]]; then
 fi
 
 # Step 1: Profile
-print_header "Step 1 of 4: Your Profile"
+mini_header 1 4
+echo -e "  ${BOLD}Your Profile${RESET}"
+echo ""
 print_progress 1 4
 
 DEFAULT_NAME=$(git config --global user.name 2>/dev/null || echo "")
@@ -573,7 +792,11 @@ VAULT_PATH="${VAULT_PATH/#\~/$HOME}"
 MEMORY_DIR=$(derive_memory_dir "$VAULT_PATH")
 
 # Step 2: Integrations
-print_header "Step 2 of 4: Integrations (optional)"
+ray_separator
+
+mini_header 2 4
+echo -e "  ${BOLD}Integrations${RESET} ${DIM}(optional)${RESET}"
+echo ""
 print_progress 2 4
 
 if $AUTO_YES; then
@@ -609,41 +832,51 @@ fi
 
 # Step 3: Modules
 if [[ -z "$PRESET" ]] && ! $AUTO_YES; then
-  print_header "Step 3 of 4: Modules"
+  ray_separator
+
+  mini_header 3 4
+  echo -e "  ${BOLD}Modules${RESET}"
+  echo ""
   print_progress 3 4
 
-  echo -e "  Select which modules to activate:"
-  echo -e "  ${DIM}(press y/n for each, Enter = default)${RESET}"
+  echo -e "  ${DIM}Select which modules to activate.${RESET}"
+  echo -e "  ${DIM}Press y/n for each, Enter = default.${RESET}"
   echo ""
 
   for cat_idx in 0 1 2 3; do
-    echo -e "  ${CYAN}◆${RESET} ${BOLD}${CAT_NAMES[$cat_idx]}${RESET}"
+    echo -e "  ┌─ ${CYAN}${CAT_NAMES[$cat_idx]}${RESET} $(printf '─%.0s' $(seq 1 $(( 44 - ${#CAT_NAMES[$cat_idx]} )) ))┐"
+    echo -e "  │$(printf '%*s' 50 '')│"
 
     for mod_idx in $(get_cat_indices $cat_idx); do
-      echo -e "          ${DIM}${MODULE_DESCS[$mod_idx]}${RESET}"
-      echo -e "          ${DIM}${MODULE_DESCS2[$mod_idx]}${RESET}"
+      echo -e "  │  ${MAGENTA}◈${RESET} ${BOLD}${MODULE_NAMES[$mod_idx]}${RESET}"
+      echo -e "  │    ${DIM}${MODULE_DESCS[$mod_idx]}${RESET}"
+      echo -e "  │    ${DIM}${MODULE_DESCS2[$mod_idx]}${RESET}"
       yn=""
       ask_yn "${MODULE_NAMES[$mod_idx]}" "Y" yn
       MODULE_ACTIVE[$mod_idx]="$yn"
-      echo ""
+      echo -e "  │"
     done
+
+    echo -e "  └$(printf '─%.0s' $(seq 1 51))┘"
+    echo ""
   done
 fi
 
 # Dry run
 if $DRY_RUN; then
-  print_header "Dry Run (no files will be created)"
+  ray_separator
   echo ""
-  echo "  Would install to: $VAULT_PATH"
+  echo -e "  ${BOLD}Dry Run${RESET} ${DIM}(no files will be created)${RESET}"
   echo ""
-  echo "  Core: always installed"
+  echo -e "  Would install to: ${BOLD}$VAULT_PATH${RESET}"
+  echo ""
+  echo -e "  ${DIM}Core: always installed${RESET}"
   for idx in "${!MODULE_KEYS[@]}"; do
     if [[ "${MODULE_ACTIVE[$idx]}" == "Y" ]]; then
-      status="${GREEN}✓${RESET}"
+      echo -e "  ${GREEN}◈${RESET} ${MODULE_NAMES[$idx]}"
     else
-      status="${DIM}✗${RESET}"
+      echo -e "  ${DIM}· ${MODULE_NAMES[$idx]}${RESET}"
     fi
-    printf "  %b %-35s\n" "$status" "${MODULE_NAMES[$idx]}"
   done
   echo ""
   echo -e "  ${YELLOW}Dry run complete. Run without --dry-run to install.${RESET}"
@@ -651,7 +884,11 @@ if $DRY_RUN; then
 fi
 
 # Step 4: Install
-print_header "Step 4 of 4: Installing"
+ray_separator
+
+mini_header 4 4
+echo -e "  ${BOLD}Installing${RESET}"
+echo ""
 print_progress 4 4
 
 if [[ -f "$VAULT_PATH/.claude/arcana.config.yaml" ]]; then
@@ -662,6 +899,7 @@ if [[ -f "$VAULT_PATH/.claude/arcana.config.yaml" ]]; then
     echo -e "  ${YELLOW}Cancelled.${RESET}"
     exit 0
   fi
+  echo ""
 fi
 
 install_core
@@ -674,7 +912,6 @@ done
 
 generate_config
 
-echo ""
-echo -e "  ${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+ray_separator
 
 print_summary
