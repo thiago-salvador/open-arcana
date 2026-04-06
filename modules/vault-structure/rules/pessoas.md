@@ -1,32 +1,32 @@
 ---
-description: "Regras para notas de pessoas em 70-Pessoas/"
-paths: ["70-Pessoas/**"]
+description: "Rules for people notes in 70-People/"
+paths: ["70-People/**"]
 ---
 
-# Regras para Notas de Pessoas
+# Rules for People Notes
 
-## Campos obrigatórios no frontmatter
+## Required frontmatter fields
 
 ```yaml
 type: person
-last_interaction: "YYYY-MM-DD"  # Atualizar a cada interação
-pending_items: []               # Action items pendentes com esta pessoa
+last_interaction: "YYYY-MM-DD"  # Update on every interaction
+pending_items: []               # Pending action items with this person
 ```
 
-## Ao atualizar uma pessoa
+## When updating a person
 
-1. Atualizar `last_interaction` com data da interação mais recente
-2. Atualizar `pending_items` (adicionar novos, remover resolvidos)
-3. Adicionar informações ao corpo da nota (Background, Interações, etc.)
-4. NUNCA inventar dados. Se não sabe, deixe em branco
+1. Update `last_interaction` with the date of the most recent interaction
+2. Update `pending_items` (add new ones, remove resolved ones)
+3. Add information to the note body (Background, Interactions, etc.)
+4. NEVER fabricate data. If you don't know, leave it blank
 
-## Ao criar pessoa nova
+## When creating a new person
 
-1. Buscar no vault se já existe nota (grep pelo nome)
-2. Usar template de 80-Templates/ se disponível
-3. Frontmatter completo com summary descritivo
-4. Atualizar index.md de 70-Pessoas/
+1. Search the vault to check if a note already exists (grep by name)
+2. Use the template from 80-Templates/ if available
+3. Complete frontmatter with a descriptive summary
+4. Update 70-People/index.md
 
 ## Relationship decay
 
-Se `last_interaction` > 14 dias para contatos importantes, alertar no end-of-day.
+If `last_interaction` > 14 days for important contacts, alert in end-of-day.

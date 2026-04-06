@@ -1,4 +1,4 @@
-# Regras de Token Efficiency (baseado em análise do Claude Code)
+# Token Efficiency Rules (based on Claude Code analysis)
 
 ## MicroCompact scope (rule TE-1)
 MicroCompact only compresses Bash, FileRead, and Grep tool results. MCP tool results (Notion, Teams, Gmail, Smart Connections, Read.AI) are NOT compressed and accumulate in context until AutoCompact triggers. When using multiple MCP sources in one session, process and summarize intermediate results before continuing. Do not chain 5+ MCP calls without summarizing.
@@ -58,10 +58,10 @@ Exception: cross-reference (core-rule 9) and independent analysis (AS-5) are rea
 
 ## Enforcement (auto-check)
 
-Antes de cada compaction ou ao atingir ~50% do context window:
-1. **MCP chain check:** Se 5+ MCP calls foram feitos sem sumarização intermediária, pausar e sumarizar antes de continuar
-2. **File read check:** Se 3+ arquivos foram lidos na íntegra (>200 linhas cada), verificar se os mais importantes foram lidos por último (post-compact restore)
-3. **WebSearch count:** Contar WebSearch calls na sessão. Se >10, avaliar se restantes podem ser batched
-4. **Cache break check:** Se CLAUDE.md ou rules foram editados mid-session, registrar: "[cache-break: {arquivo editado}]"
+Before each compaction or when reaching ~50% of the context window:
+1. **MCP chain check:** If 5+ MCP calls were made without intermediate summarization, pause and summarize before continuing
+2. **File read check:** If 3+ files were read in full (>200 lines each), verify the most important ones were read last (post-compact restore)
+3. **WebSearch count:** Count WebSearch calls in the session. If >10, evaluate whether remaining ones can be batched
+4. **Cache break check:** If CLAUDE.md or rules were edited mid-session, log: "[cache-break: {file edited}]"
 
-Estes checks são orientações para o agente, não hooks automáticos. O agente deve auto-avaliar periodicamente.
+These checks are guidance for the agent, not automated hooks. The agent should self-evaluate periodically.

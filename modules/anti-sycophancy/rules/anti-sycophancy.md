@@ -1,86 +1,86 @@
 ---
-description: "Protocolo anti-sycophancy para sessões interativas e agentes autônomos. Previne falso consenso, disagreement collapse e concordância sem evidência."
+description: "Anti-sycophancy protocol for interactive sessions and autonomous agents. Prevents false consensus, disagreement collapse, and agreement without evidence."
 ---
 
-# Protocolo Anti-Sycophancy
+# Anti-Sycophancy Protocol
 
-## Princípio central
+## Core principle
 
-**Concordância sem evidência é uma falha, não um sucesso.** O objetivo não é harmonia entre sessões/agentes, é precisão. Desacordo fundamentado é mais valioso que consenso automático.
+**Agreement without evidence is a failure, not a success.** The goal is not harmony between sessions/agents, it's precision. Grounded disagreement is more valuable than automatic consensus.
 
-## 6 Regras Anti-Sycophancy
+## 6 Anti-Sycophancy Rules
 
-### AS-1. Confidence tags obrigatórios no log
+### AS-1. Mandatory confidence tags in logs
 
-Todo log na Daily Note deve incluir um qualifier de confiança:
+Every Daily Note log entry must include a confidence qualifier:
 
 ```
 - HH:MM [action] Description [confidence: high|medium|low, source: api|log|inferred|memory|prior-agent]
 ```
 
-- `high` + `api/doc`: fato verificado contra fonte primária
-- `medium` + `log/memória`: informação de sessão anterior ou memory file, não re-verificada
-- `low` + `inferido/agente-anterior`: conclusão própria ou herdada de outro agente sem validação
+- `high` + `api/doc`: fact verified against primary source
+- `medium` + `log/memory`: information from a prior session or memory file, not re-verified
+- `low` + `inferred/prior-agent`: own conclusion or inherited from another agent without validation
 
-**Se confidence = low:** adicionar `[!needs-verification]` para que sessões futuras saibam que precisa checagem.
+**If confidence = low:** add `[!needs-verification]` so future sessions know it needs checking.
 
-### AS-2. Challenge-previous obrigatório
+### AS-2. Mandatory challenge-previous
 
-Ao consumir output de uma sessão/agente anterior (Daily Note de ontem, output de scheduled task, memory file):
+When consuming output from a prior session/agent (yesterday's Daily Note, scheduled task output, memory file):
 
-1. **Ler o output**
-2. **Antes de aceitar, perguntar:** "Que evidência sustenta isso? Mudou algo desde que foi escrito?"
-3. **Identificar pelo menos 1 ponto questionável** (pode ser menor, mas o exercício é obrigatório)
-4. **Se não encontrar nada questionável:** registrar explicitamente `[challenge-previous: revisado, sem divergências encontradas]`
+1. **Read the output**
+2. **Before accepting, ask:** "What evidence supports this? Has anything changed since it was written?"
+3. **Identify at least 1 questionable point** (it can be minor, but the exercise is mandatory)
+4. **If nothing questionable found:** log explicitly `[challenge-previous: reviewed, no divergences found]`
 
-Não se trata de discordar por discordar. É de nunca aceitar sem examinar.
+This isn't about disagreeing for its own sake. It's about never accepting without examining.
 
-### AS-3. Unanimidade suspeita
+### AS-3. Suspicious unanimity
 
-Se ao processar múltiplas fontes (Teams + Outlook + Read.AI, ou daily-news + morning-briefing, ou grep + Smart Connections) todas concordam perfeitamente:
+When processing multiple sources (Teams + Outlook + Read.AI, or daily-news + morning-briefing, or grep + Smart Connections) and all agree perfectly:
 
-- **Flag como** `[unanimity-check: N fontes concordam]`
-- **Perguntar:** "É possível que essas fontes compartilhem o mesmo viés ou a mesma fonte original?"
-- Se todas derivam da mesma fonte upstream, a "concordância" não é evidência independente
+- **Flag as** `[unanimity-check: N sources agree]`
+- **Ask:** "Could these sources share the same bias or the same original source?"
+- If all derive from the same upstream source, the "agreement" is not independent evidence
 
-### AS-4. Documentação de conflitos
+### AS-4. Conflict documentation
 
-Quando uma sessão atual discordar de uma sessão anterior (fato diferente, conclusão oposta, contexto mudou):
+When a current session disagrees with a prior session (different fact, opposite conclusion, changed context):
 
-1. **NÃO sobrescrever silenciosamente.** Criar um ConflictReport (ver template em 80-Templates/ConflictReport.md)
-2. Salvar na pasta do domínio relevante
-3. Linkar da Daily Note
-4. Resolver com evidência, não com "a sessão mais recente ganha"
+1. **Do NOT silently overwrite.** Create a ConflictReport (see template in 80-Templates/ConflictReport.md)
+2. Save in the relevant domain folder
+3. Link from the Daily Note
+4. Resolve with evidence, not with "the most recent session wins"
 
-### AS-5. Análise independente antes de encadear
+### AS-5. Independent analysis before chaining
 
-Para qualquer tarefa que envolva ler output de outro agente/sessão e produzir novo output:
+For any task that involves reading output from another agent/session and producing new output:
 
-1. **Fase 1 (independente):** Formar avaliação própria baseada nas fontes primárias (APIs, arquivos, docs)
-2. **Fase 2 (comparação):** Só então ler o output anterior e comparar
-3. **Fase 3 (síntese):** Se divergir, documentar a divergência. Se concordar, registrar que a concordância foi verificada independentemente.
+1. **Phase 1 (independent):** Form your own assessment based on primary sources (APIs, files, docs)
+2. **Phase 2 (comparison):** Only then read the prior output and compare
+3. **Phase 3 (synthesis):** If you diverge, document the divergence. If you agree, record that the agreement was independently verified.
 
-Isso previne cascading conformity onde cada agente apenas reforça o anterior.
+This prevents cascading conformity where each agent merely reinforces the previous one.
 
-### AS-6. Memory decay e re-verificação
+### AS-6. Memory decay and re-verification
 
-- Memories com **>7 dias** sobre estados transitórios: verificar contra fonte primária antes de agir (já existia como core-rule 8, agora enforced)
-- Memories com **>30 dias**: tratar como `[confidence: low]` automaticamente, independente do conteúdo
-- Ao re-verificar e encontrar que a memória ainda é válida: atualizar o campo `created` ou adicionar nota `[re-verified: YYYY-MM-DD]`
-- Ao re-verificar e encontrar divergência: criar ConflictReport, atualizar ou arquivar a memória
+- Memories **>7 days** about transient states: verify against primary source before acting (already existed as core-rule 8, now enforced)
+- Memories **>30 days**: treat as `[confidence: low]` automatically, regardless of content
+- On re-verification, if the memory is still valid: update the `created` field or add `[re-verified: YYYY-MM-DD]`
+- On re-verification, if divergence found: create ConflictReport, update or archive the memory
 
-## Métricas (para /weekly e /contrarian)
+## Metrics (for /weekly and /contrarian)
 
-| Métrica | O que mede | Red flag |
-|---------|-----------|----------|
-| Challenge rate | % de vezes que challenge-previous encontrou algo | 0% por 7 dias = suspeito |
-| Conflict reports criados | Número de divergências documentadas na semana | 0 em semana ativa = suspeito |
-| Confidence distribution | Distribuição de high/medium/low nos logs | >90% high = provavelmente inflado |
-| Source diversity | Quantas fontes independentes por conclusão | 1 fonte = não validado |
+| Metric | What it measures | Red flag |
+|--------|-----------------|----------|
+| Challenge rate | % of times challenge-previous found something | 0% for 7 days = suspicious |
+| Conflict reports created | Number of documented divergences in the week | 0 in an active week = suspicious |
+| Confidence distribution | Distribution of high/medium/low in logs | >90% high = probably inflated |
+| Source diversity | How many independent sources per conclusion | 1 source = not validated |
 
-## Aplicação
+## Application
 
-- **Sessões interativas**: seguir AS-1 a AS-6 integralmente
-- **Scheduled tasks**: seguir AS-2 (challenge-previous) e AS-5 (independent analysis) no prompt
-- **Weekly review**: calcular métricas e reportar no weekly review
-- **Contrarian review**: `/contrarian` roda análise dedicada (ver skill)
+- **Interactive sessions**: follow AS-1 through AS-6 fully
+- **Scheduled tasks**: follow AS-2 (challenge-previous) and AS-5 (independent analysis) in the prompt
+- **Weekly review**: calculate metrics and report in the weekly review
+- **Contrarian review**: `/contrarian` runs a dedicated analysis (see skill)

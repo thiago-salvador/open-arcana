@@ -1,53 +1,52 @@
 ---
-description: "Boot sequence e retrieval layers (Engram-inspired). Hot-cache no boot, demais sob demanda."
+description: "Boot sequence and retrieval layers (Engram-inspired). Hot-cache on boot, rest on demand."
 ---
 
-# Protocolo de Boot
+# Boot Protocol
 
-## Na inicialização (auto-loaded pelo SessionStart hook)
+## On startup (auto-loaded by SessionStart hook)
 
-1. **MEMORY.md** - índice de memory files (auto-loaded pelo Claude Code memory system)
-2. **Daily Note de hoje** - criar se não existir (com frontmatter + Rules Manifest). Checar Estado Atual e pendências.
-3. **Hot cache** - Tier 1+2 notes injetadas automaticamente pelo `session-scan.sh`
+1. **MEMORY.md** - memory file index (auto-loaded by Claude Code memory system)
+2. **Today's Daily Note** - create if missing (with frontmatter + Rules Manifest). Check current state and pending items.
+3. **Hot cache** - Tier 1+2 notes injected automatically by `session-scan.sh`
 
-Concept-index e aliases NÃO são carregados no boot (só contagem). Ler sob demanda.
+Concept-index and aliases are NOT loaded on boot (only counts). Read on demand.
 
-## Retrieval sob demanda (Engram layers)
+## On-demand retrieval (Engram layers)
 
-Usar SOMENTE quando a tarefa exigir:
+Use ONLY when the task requires it:
 
-| Layer | Quando usar | Como |
-|-------|-------------|------|
-| 1. Concept index / aliases | Task menciona conceito específico | Lookup em `00-Dashboard/concept-index.md` ou `aliases.md` |
-| 2. Grep filtrado | Layer 1 não resolveu | `grep -rl "termo" <pasta-filtrada>/` max 5 results |
-| 3. Smart Connections | Grep retorna vazio E conceito não está no index | `ob-smart-connections` MCP, max 3 results |
-| 4. Fallback | Todas as camadas retornaram vazio | Listar arquivos recentes no domínio ativo (`ls -t <pasta>/`) ou pedir clarificação ao usuário |
+| Layer | When to use | How |
+|-------|-------------|-----|
+| 1. Concept index / aliases | Task mentions a specific concept | Lookup in `00-Dashboard/concept-index.md` or `aliases.md` |
+| 2. Filtered grep | Layer 1 didn't resolve | `grep -rl "term" <filtered-folder>/` max 5 results |
+| 3. Smart Connections | Grep returns empty AND concept isn't in the index | `ob-smart-connections` MCP, max 3 results |
+| 4. Fallback | All layers returned empty | List recent files in active domain (`ls -t <folder>/`) or ask the user for clarification |
 
-**Context-Aware Gating:** Antes de buscar (layers 3-4), definir domínio ativo (work, studio, content, research, personal) para filtrar resultados irrelevantes.
+**Context-Aware Gating:** Before searching (layers 3-4), define the active domain (work, studio, content, research, personal) to filter irrelevant results.
 
-**Budget:** max 3 reads completos por query. Se precisa mais, ler summaries no frontmatter primeiro.
+**Budget:** max 3 full file reads per query. If you need more, read summaries from frontmatter first.
 
-## Rules Manifest (adicionar na Daily Note se ausente)
+## Rules Manifest (add to Daily Note if absent)
 
 ```markdown
 ## Rules Manifest
-> [!info] Regras ativas
-> - `core-rules.md` - 12 regras operacionais + pre-delivery (5 checks); anti-sycophancy só em `anti-sycophancy.md`
-> - `anti-sycophancy.md` - 6 regras AS: confidence tags, challenge-previous, unanimidade, conflicts, independent analysis, memory decay
+> [!info] Active rules
+> - `core-rules.md` - 11 operational rules + pre-delivery (5 checks); anti-sycophancy in `anti-sycophancy.md`; personal rules in memory files
+> - `anti-sycophancy.md` - 6 AS rules: confidence tags, challenge-previous, unanimity, conflicts, independent analysis, memory decay
 > - `boot-protocol.md` - Boot + retrieval layers
-> - `connected-sources.md` - Fontes MCP + known issues
-> - `content.md` - Identidade editorial (scope: 30-Content/)
-> - `pessoas.md` - Formato pessoas (scope: 70-People/)
-> - `work.md` - Contexto Work (scope: 10-Work/)
+> - `connected-sources.md` - MCP sources + known issues
+> - `content.md` - Editorial identity (scope: 30-Content/)
+> - `pessoas.md` - People note format (scope: 70-People/)
 > - `memory/MEMORY.md` - Memory files (feedback, project, reference)
 ```
 
-## Sistema de Memória
+## Memory System
 
 ```
 ~/.claude/projects/.../memory/
-├── MEMORY.md           → Índice
-├── feedback_*.md       → Regras aprendidas (14)
-├── project_*.md        → Contexto projetos (3)
-└── reference_*.md      → Dados de referência (6)
+├── MEMORY.md           - Index
+├── feedback_*.md       - Learned rules
+├── project_*.md        - Project context
+└── reference_*.md      - Reference data
 ```
