@@ -18,3 +18,4 @@ Thumbs.db
 # Node (if users have any tooling)
 node_modules/
 .cursor/
+Logo/

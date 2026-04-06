@@ -2,29 +2,9 @@
 
 Obsidian vault for {{USER_NAME}} ({{USER_ROLE}}{{COMPANY:+ at {{COMPANY}}}}).
 
-## Retrieval System (Engram-inspired)
+## Retrieval System
 
-**Never read the entire vault.** The retrieval system uses hierarchical lookup inspired by the "Conditional Memory via Scalable Lookup" paper (DeepSeek Engram). Scale layers sequentially, stop as soon as resolved.
-
-### Boot (auto-loaded by SessionStart hook)
-- `MEMORY.md` (memory index, auto-loaded by Claude Code memory system)
-- Daily Note for today (create if missing; check current state and pending items)
-- `00-Dashboard/hot-cache.md` (Tier 1+2 notes, injected by session-scan.sh)
-
-### Layer 1: Deterministic Lookup (O(1), on demand)
-- `00-Dashboard/concept-index.md` (hash table: concept -> notes)
-- `00-Dashboard/aliases.md` (term normalization/synonyms for query expansion)
-
-### Layer 2: Filtered Search (when Layer 1 didn't resolve)
-- Define **context vector** (domain, project, phase) before searching
-- `<folder>/index.md` (navigate by structure)
-- `grep` filtered by domain/type, max 5 results
-
-### Layer 3: Semantic Search (last resort)
-- Smart Connections MCP, max 3 results
-- Only when grep returns empty AND concept isn't in the index
-
-### Retrieval Budget: max 20% context window for retrieval, 80% for reasoning.
+**Never read the entire vault.** Full system in `.claude/rules/boot-protocol.md` (4 Engram layers + budget).
 
 ## Vault Structure
 
@@ -77,20 +57,12 @@ created: YYYY-MM-DD
 
 ## Vault Automation Commands
 
-| Command | What it does | When to use |
-|---------|-------------|-------------|
-| `/start` | Intelligence briefing + Daily Note | Start of day |
-| `/recap` | Summary of today so far (read-only) | Any time |
-| `/end` | Summarize day + decisions + tomorrow | End of day |
-| `/health` | Vault health audit | Part of /weekly or on demand |
-| `/weekly` | 7-day review | Monday |
-| `/dump` | Brain dump with auto-routing | Any time, free-form thinking |
-| `/capture` | Interactive guided note capture | End of work session |
-| `/process` | Process material into atomic notes | After research |
-| `/scan` | Scan files modified outside vault | Start of session |
-| `/connections` | Discover cross-domain links | Part of maintenance |
-| `/link-check` | Insert missing wikilinks in recent notes | After creating notes |
-| `/contrarian` | Check for excessive agreement, unverified facts | Part of /weekly |
+All commands are in `.claude/commands/`. Each .md file is a slash command. Main ones:
+
+**Daily:** `/start` (morning briefing), `/end` (day closure), `/recap` (read-only summary)
+**Weekly:** `/weekly` (7-day review), `/contrarian` (anti-sycophancy analysis)
+**Capture:** `/dump` (brain dump + auto-routing), `/capture` (guided), `/process` (atomize material)
+**Vault:** `/health` (audit), `/scan` (external files), `/connections` (cross-domain links), `/link-check` (missing wikilinks)
 
 ## Cross-Domain Connections
 
@@ -111,3 +83,7 @@ When reading any file, if you suspect it may have >2000 lines, use `offset` and 
 - **Obsidian MCP** (read/write notes)
 - **Smart Connections MCP** (semantic search, Layer 3 of retrieval)
 - **Templates** in `80-Templates/`
+
+## Rules
+
+Auto-loaded from `.claude/rules/`. Do not duplicate content here. To see active rules, check the directory directly.
