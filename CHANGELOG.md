@@ -2,6 +2,12 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.2] - 2026-04-06
+
+### Changed
+- All remaining Portuguese content translated to English (anti-sycophancy.md, boot-protocol.md, token-efficiency.md, pessoas.md)
+- Every user-facing file in the repo is now fully English
+
 ## [1.0.1] - 2026-04-06
 
 ### Changed
