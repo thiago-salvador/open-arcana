@@ -2,6 +2,19 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.3] - 2026-04-06
+
+### Added
+- TE-15: Subagent budget per session (soft cap of 8 subagents, evaluate before exceeding)
+- Session discipline rule: monitors tool call count, subagent accumulation, and task boundaries to suggest new sessions before auto-compact triggers
+- Token Economy section in /weekly command: runs token_analysis.py and reports cost, top projects, daily trend, and optimization flags
+- tools/token_analysis.py: standalone script that parses ~/.claude/projects/ JSONL files and generates a markdown cost report with per-project breakdown, costliest sessions, subagent analysis, and daily trends
+
+### Changed
+- token-efficiency.md: expanded from 14 to 15 rules
+- weekly.md: section numbering updated (3.5 Token Economy, 3.6 Memory Health, 3.7 Contrarian)
+- README.md for token-efficiency module: updated to document TE-15, session discipline, and token analysis script
+
 ## [1.0.2] - 2026-04-06
 
 ### Changed

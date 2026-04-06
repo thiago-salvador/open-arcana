@@ -57,7 +57,48 @@ Compile into table:
 
 If no repo has activity: skip this section silently.
 
-### 3.5 Memory Health Check (consolidation)
+### 3.5 Token Economy Report
+
+Generate a token consumption report for the week:
+
+```bash
+SINCE_DAYS=7 python3 {{VAULT_PATH}}/../tools/token_analysis.py
+# Or if installed globally:
+# SINCE_DAYS=7 VAULT_PATH={{VAULT_PATH}} python3 token_analysis.py
+```
+
+If the script is not available, skip this section with a note.
+
+Read the generated report at `00-Dashboard/token-report.md` and extract:
+- Grand totals (tokens, estimated cost)
+- Top 3 projects by cost
+- Top 3 costliest sessions (with first prompt)
+- Daily trend for the week
+- % of tokens in subagents vs main sessions
+
+Compile:
+
+```markdown
+### Token Economy
+
+| Metric | Value |
+|--------|-------|
+| Total tokens (7d) | N |
+| Estimated cost (fast mode) | $N |
+| Sessions | N |
+| Subagent % | N% |
+
+**Top projects:** Project1 ($N), Project2 ($N), Project3 ($N)
+
+**Costliest session:** $N -- "first prompt..." (N subagents)
+
+**Daily trend:** increasing / stable / decreasing
+```
+
+If average daily cost is >$5K: flag as alert with optimization recommendation.
+If subagent % is >60%: suggest reviewing parallel agent dispatch.
+
+### 3.6 Memory Health Check (consolidation)
 
 Run a maintenance pass on memory files:
 
@@ -112,7 +153,7 @@ Compile result:
 
 If issues found: list each with suggested action (remove, update, or keep). DO NOT auto-correct. Present to user for decision.
 
-### 3.6 Contrarian Analysis (anti-sycophancy)
+### 3.7 Contrarian Analysis (anti-sycophancy)
 
 Run the weekly contrarian analysis (integrated version of `/contrarian`):
 
@@ -160,8 +201,9 @@ If any metric is red-flag: list specific recommendation.
   - `### Dev Metrics` (GitHub table if there was activity)
   - `### Pending` (what was not completed)
   - `### Connections` (cross-domain patterns identified)
-  - `### Memory Health` (result from check 3.5)
-  - `### Anti-Sycophancy Metrics` (result from check 3.6)
+  - `### Token Economy` (result from check 3.5 -- tokens, cost, top projects, trend)
+  - `### Memory Health` (result from check 3.6)
+  - `### Anti-Sycophancy Metrics` (result from check 3.7)
   - `### Next week` (priority suggestions)
 
 ### 5. Ask for validation

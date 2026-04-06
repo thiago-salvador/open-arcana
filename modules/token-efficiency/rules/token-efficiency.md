@@ -56,6 +56,16 @@ When dispatching agents: give the complete task in the initial prompt. Each foll
 Do not read files, grep, or search "just in case." Every tool call has a token cost. Before calling a tool, answer: "Do I need this result to proceed?" If the answer is "maybe," skip it and come back only if blocked. This applies especially to vault retrieval: follow the Engram layers, don't shotgun.
 Exception: cross-reference (core-rule 9) and independent analysis (AS-5) are reads with a defined objective, not speculative exploration. TE-14 prohibits aimless reads, not source validation.
 
+## Subagent budget per session (rule TE-15)
+Soft cap of 8 subagents dispatched per session. After 8:
+1. **Stop and evaluate**: is the task too large for one session?
+2. **If yes**: suggest a new session (see `session-discipline.md`)
+3. **If no**: proceed but log `[subagent-cap: N/8, justification]`
+
+The cap exists because each subagent inherits context from the parent session. With 10+ subagents, the multiplied context cost exceeds the benefit of parallelization.
+
+**Exception**: SDD pipelines with `/sdd-execute` may exceed the cap if there are 8+ independent issues. Log the exception.
+
 ## Enforcement (auto-check)
 
 Before each compaction or when reaching ~50% of the context window:

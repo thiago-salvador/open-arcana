@@ -1,6 +1,6 @@
 # Token Efficiency Module
 
-14 rules for minimizing token waste in Claude Code sessions. Based on empirical analysis of how Claude Code handles context windows, compaction, caching, and tool calls.
+15 rules + session discipline for minimizing token waste in Claude Code sessions. Based on empirical analysis of how Claude Code handles context windows, compaction, caching, and tool calls. Includes a weekly token analysis script.
 
 ## The 14 TE Rules
 
@@ -46,6 +46,15 @@ Give agents the complete task in the initial prompt. Each follow-up message cost
 ### TE-14: Avoid speculative exploration
 Don't read files or search "just in case." Before calling a tool, ask: "Do I need this result to proceed?" If the answer is "maybe," skip it and come back only if blocked.
 
+### TE-15: Subagent budget per session
+Soft cap of 8 subagents per session. After 8, stop and evaluate whether the task should be split into separate sessions. Each subagent inherits parent context, so 10+ subagents multiplies cost beyond the parallelization benefit.
+
+### Session Discipline (companion rule)
+Monitors context accumulation and suggests new sessions before auto-compact triggers. Warns at 30 tool calls, urgent at 50. Prefers new sessions over `/clear` (preserves history). See `rules/session-discipline.md`.
+
+### Token Analysis Script
+`tools/token_analysis.py` analyzes `~/.claude/projects/` JSONL files and generates a cost report. Integrated into `/weekly` as the Token Economy check. Run with `SINCE_DAYS=7 python3 token_analysis.py`.
+
 ## Enforcement checklist
 
 At ~50% context window or before compaction:
@@ -59,10 +68,17 @@ At ~50% context window or before compaction:
 
 ```
 modules/token-efficiency/
-  rules/token-efficiency.md  # Full rule definitions (TE-1 through TE-14)
-  README.md                  # This file
+  rules/token-efficiency.md     # Full rule definitions (TE-1 through TE-15)
+  rules/session-discipline.md   # Session length monitoring + new session suggestions
+  README.md                     # This file
+
+tools/
+  token_analysis.py             # Weekly token usage analyzer script
 ```
 
 ## Installation
 
-Copy `rules/token-efficiency.md` to your project's `.claude/rules/` directory. The rules auto-load on every session.
+1. Copy `rules/token-efficiency.md` and `rules/session-discipline.md` to your project's `.claude/rules/` directory
+2. Copy `tools/token_analysis.py` somewhere accessible (vault, project root, or global tools dir)
+3. The rules auto-load on every session
+4. The `/weekly` command runs the token analysis automatically if the script is found
