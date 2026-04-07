@@ -4,7 +4,7 @@
 
 Open Arcana turns your Obsidian vault into an AI-operated knowledge system. It gives Claude Code the rules, hooks, retrieval strategies, and automation commands it needs to actually work well with a vault, not just read and write files.
 
-Built from a production system running 16 hooks, 24 commands, and 500+ automated health checks daily.
+Built from a production system running 16 hooks, 27 commands, and 500+ automated health checks daily.
 
 ## What's in the box
 
@@ -16,7 +16,7 @@ Built from a production system running 16 hooks, 24 commands, and 500+ automated
 | **Security Hooks** | Blocks prompt injection in memory files, guards against fabricated people data. |
 | **Vault Structure** | Opinionated folder system with 18 note templates. One command creates the full tree. |
 | **Retrieval System** | 4-layer lookup inspired by DeepSeek's Engram paper. Concept index, filtered grep, semantic search, fallback. |
-| **Slash Commands** | 18 commands: /start, /end, /weekly, /health, /dump, /capture, and more. |
+| **Slash Commands** | 21 commands: /start, /end, /weekly, /health, /dump, /capture, /distill, /recall, /model-review, and more. |
 | **Connected Sources** | Templates for orchestrating 16+ MCP data sources (Teams, Notion, Calendar, Read.AI, etc). |
 | **Scheduled Tasks** | Patterns for autonomous recurring agents: morning briefing, end-of-day, weekly review. |
 | **Vault Health** | 500+ automated checks for frontmatter, orphans, broken links, and index consistency. |
@@ -53,12 +53,26 @@ Skip the wizard with a preset:
 ### Other flags
 
 ```bash
+./setup.sh --update            # Update existing install (preserves config)
 ./setup.sh --dry-run           # Preview what would be installed
 ./setup.sh --yes               # Accept all defaults (scripting mode)
 ./setup.sh --add <module>      # Add a module to existing install
 ./setup.sh --remove <module>   # Remove a module
 ./setup.sh --list              # Show installed modules
 ```
+
+## Auto-update
+
+Open Arcana checks for updates once per day on session start. If a newer version is available, you'll see a notification:
+
+```
+Open Arcana update available: v1.0.3 -> v1.0.4
+  Run: cd /path/to/open-arcana && git pull && ./setup.sh --update
+```
+
+The `--update` flag reads your existing config (profile, modules, integrations), pulls the latest code, and reinstalls without re-running the wizard. Your settings are preserved.
+
+To disable the check, remove the `update-check.sh` hook from your `.claude/settings.local.json`.
 
 ## How it works
 

@@ -57,7 +57,13 @@ Compile into table:
 
 If no repo has activity: skip this section silently.
 
-### 3.5 Token Economy Report
+### 3.5 Session Index + Token Economy Report
+
+Update the session index (incremental, fast):
+
+```bash
+VAULT_PATH={{VAULT_PATH}} python3 {{VAULT_PATH}}/../tools/session_index.py --incremental
+```
 
 Generate a token consumption report for the week:
 
@@ -187,6 +193,29 @@ Compile:
 
 If any metric is red-flag: list specific recommendation.
 
+### 3.8 User Model Review
+
+Run a lightweight version of `/model-review`:
+
+1. List memory files and Daily Notes from the last 7 days
+2. Scan for repeated preferences not captured in feedback memories
+3. Check project memories against actual activity (flag stale if 0 activity in 14+ days)
+4. If new workflow patterns detected: suggest `/distill`
+
+Compile:
+
+```markdown
+### User Model
+
+| Type | Finding | Suggested Action |
+|------|---------|-----------------|
+| New preference | [description] | Create feedback memory |
+| Stale memory | [file] | Review/archive |
+| Missing project | [domain] | Create project memory |
+```
+
+If no findings: skip this section silently.
+
 ### 4. Search vault for connections
 - Use Smart Connections or grep to identify recurring themes
   <!-- LIMIT: Smart Connections max 3 results (boot-protocol rule) -->
@@ -204,6 +233,7 @@ If any metric is red-flag: list specific recommendation.
   - `### Token Economy` (result from check 3.5 -- tokens, cost, top projects, trend)
   - `### Memory Health` (result from check 3.6)
   - `### Anti-Sycophancy Metrics` (result from check 3.7)
+  - `### User Model` (result from check 3.8, if findings exist)
   - `### Next week` (priority suggestions)
 
 ### 5. Ask for validation

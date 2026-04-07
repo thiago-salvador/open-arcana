@@ -2,6 +2,27 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.4] - 2026-04-06
+
+### Added
+- **Auto-update system**: `update-check.sh` hook checks for updates once per day on session start (notification only, never auto-updates). `setup.sh --update` reinstalls from latest code while preserving user config (profile, modules, integrations). `arcana.config.yaml` now stores `source_dir` for the check.
+- `/distill` command: extracts reusable workflows from the current session (5+ step sequences with coherent outcomes), classifies as command/rule/template candidates
+- `/recall` command + `tools/session_index.py`: cross-session full-text search. Indexes all JSONL sessions into a grepable index, supports incremental updates. Zero dependencies beyond Python 3.
+- `/model-review` command: proactive user model review that detects uncaptured preferences, stale memories, missing project records, and emerging workflow patterns
+- `core/rules/auto-parallel.md`: automatic decomposition of multi-step requests into parallel agents. Includes agent type selection guide, token efficiency tips, anti-patterns, and soft cap of 8 subagents per session.
+- `core/rules/definition-of-done.md`: mandatory validation before marking any task as Done. Minimum test matrix by change type, anti-patterns for false completion.
+- User Model Review step (3.8) in `/weekly` command
+
+### Changed
+- setup.sh: core rules now copied via glob (picks up new rules automatically instead of hardcoding filenames)
+- setup.sh: added `--update` flag and `read_existing_config()` function
+- settings.template.json: wired `update-check.sh` into SessionStart hooks
+- arcana.config.yaml: added `source_dir` field
+- weekly.md: session index update wired into step 3.5 (runs before token analysis)
+- weekly.md: added step 3.8 (User Model Review) and corresponding output section
+- Commands README: updated to document 3 new commands (21 total)
+- Main README: updated command count from 18 to 21
+
 ## [1.0.3] - 2026-04-06
 
 ### Added
