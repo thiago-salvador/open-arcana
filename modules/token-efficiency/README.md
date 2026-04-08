@@ -1,8 +1,8 @@
 # Token Efficiency Module
 
-15 rules + session discipline for minimizing token waste in Claude Code sessions. Based on empirical analysis of how Claude Code handles context windows, compaction, caching, and tool calls. Includes a weekly token analysis script.
+17 rules + session discipline for minimizing token waste in Claude Code sessions. Based on empirical analysis of how Claude Code handles context windows, compaction, caching, and tool calls. Includes a weekly token analysis script.
 
-## The 14 TE Rules
+## The 17 TE Rules
 
 ### TE-1: MicroCompact scope
 MicroCompact only compresses Bash, FileRead, and Grep results. MCP tool results (Notion, Teams, Gmail, etc.) accumulate uncompressed until AutoCompact triggers. Don't chain 5+ MCP calls without summarizing intermediate results.
@@ -49,6 +49,12 @@ Don't read files or search "just in case." Before calling a tool, ask: "Do I nee
 ### TE-15: Subagent budget per session
 Soft cap of 8 subagents per session. After 8, stop and evaluate whether the task should be split into separate sessions. Each subagent inherits parent context, so 10+ subagents multiplies cost beyond the parallelization benefit.
 
+### TE-16: Effort level awareness
+Since Claude Code 2.1.94, the default effort level changed from medium to high. High effort means more reasoning tokens per turn. For routine operations (scheduled tasks, syncs, maintenance), suggest `/effort medium`. Keep high for complex reasoning. The agent should only suggest, never change autonomously.
+
+### TE-17: MCP result size override
+Since Claude Code 2.1.91, MCP tools can override result truncation via `_meta["anthropic/maxResultSizeChars"]` (up to 500K). Large untruncated MCP results consume more context. Summarize before proceeding if only part of the result is needed.
+
 ### Session Discipline (companion rule)
 Monitors context accumulation and suggests new sessions before auto-compact triggers. Warns at 30 tool calls, urgent at 50. Prefers new sessions over `/clear` (preserves history). See `rules/session-discipline.md`.
 
@@ -68,7 +74,7 @@ At ~50% context window or before compaction:
 
 ```
 modules/token-efficiency/
-  rules/token-efficiency.md     # Full rule definitions (TE-1 through TE-15)
+  rules/token-efficiency.md     # Full rule definitions (TE-1 through TE-17)
   rules/session-discipline.md   # Session length monitoring + new session suggestions
   README.md                     # This file
 

@@ -22,6 +22,17 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash {{VAULT_PATH}}/.claude/hooks/session-title.sh"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [],
     "PostToolUse": [],
     "PreCompact": []

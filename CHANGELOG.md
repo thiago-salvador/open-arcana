@@ -2,6 +2,20 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.5] - 2026-04-07
+
+### Added
+- **Session title hook**: `session-title.sh` (UserPromptSubmit hook) auto-sets descriptive session titles based on slash commands or domain keywords. Makes `--resume` show names like "Morning Kickoff", "Weekly Review", "Vault Ops" instead of generic session IDs. Requires Claude Code >= 2.1.94.
+- TE-16: Effort level awareness. Default changed from medium to high in Claude Code 2.1.94. Documents when to suggest `/effort medium` (routine ops) vs keep high (complex reasoning).
+- TE-17: MCP result size override awareness. Documents `_meta["anthropic/maxResultSizeChars"]` annotation (up to 500K) from Claude Code 2.1.91 and its context cost implications.
+
+### Changed
+- token-efficiency.md: expanded from 15 to 17 rules
+- token-efficiency README: updated rule count and added TE-16, TE-17 descriptions
+- settings.template.json: added UserPromptSubmit hook section with session-title.sh
+- customization.md: documented UserPromptSubmit hooks, plugin skill hooks fix, `bin/` executables, `disableSkillShellExecution`, `keep-coding-instructions` frontmatter, and stable skill names via frontmatter `name` field
+- README.md: updated token efficiency rule count from 14 to 17
+
 ## [1.0.4] - 2026-04-06
 
 ### Added

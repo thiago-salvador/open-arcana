@@ -32,17 +32,37 @@ Hooks are bash scripts triggered by Claude Code events:
 | Event | When it fires | Use case |
 |-------|--------------|----------|
 | SessionStart | New session begins | Load context, check state |
+| UserPromptSubmit | User sends a prompt | Set session title, validate input |
 | PreToolUse | Before a tool runs | Validate inputs, inject context |
 | PostToolUse | After a tool runs | Validate outputs, trigger side effects |
 | PreCompact | Before context compaction | Save state, persist learnings |
+| Stop | Session ending | Validate work was logged |
 
 Hooks receive context via environment variables and stdin (JSON with tool details).
+
+**UserPromptSubmit hooks** (Claude Code >= 2.1.94) can set the session title via `hookSpecificOutput.sessionTitle` in their JSON output. This makes `--resume` show descriptive names instead of generic ones.
+
+**Plugin skill hooks** defined in YAML frontmatter now work correctly (fixed in 2.1.94). You can define hooks directly in command/skill frontmatter instead of wiring them in settings.json.
 
 ### Commands
 
 Commands are Markdown prompt templates. The filename becomes the slash command name. `/health` maps to `commands/health.md`.
 
+**Important (Claude Code >= 2.1.94):** If your commands are part of a plugin using `"skills": ["./"]`, the invocation name comes from the frontmatter `name` field, not the filename. Always include a `name` field in command frontmatter to ensure stable invocation names across install methods.
+
 Use `{{VAULT_PATH}}` and other template variables in commands. They're replaced at install time.
+
+### Executables (Claude Code >= 2.1.91)
+
+Plugins can ship executables under a `bin/` directory. These become available as bare commands in the Bash tool without needing full paths. Useful for shipping CLI tools (indexers, analyzers, formatters) alongside your module.
+
+```
+modules/your-module/
+├── bin/
+│   └── my-analyzer     # Available as: my-analyzer (no path needed)
+├── rules/
+└── README.md
+```
 
 ### Template variables
 
@@ -60,6 +80,24 @@ Available in any file with `.template` extension (processed by setup.sh):
 | `{{PRIMARY_DOMAIN}}` | Main work domain |
 | `{{COMPANY}}` | Company name |
 | `{{DOMAINS}}` | Comma-separated domain list |
+
+## Security settings
+
+### Disabling shell execution in skills (Claude Code >= 2.1.91)
+
+If you want to prevent skills and slash commands from running arbitrary shell commands, add to your `settings.json`:
+
+```json
+{
+  "disableSkillShellExecution": true
+}
+```
+
+This blocks inline shell execution in skills, custom slash commands, and plugin commands. Useful for shared environments or when onboarding new team members.
+
+### Command frontmatter: keep-coding-instructions (Claude Code >= 2.1.94)
+
+Commands can include `keep-coding-instructions: true` in their YAML frontmatter to preserve the project's coding instructions in the output context. Useful for commands that generate code and need to follow project conventions.
 
 ## Modifying existing modules
 

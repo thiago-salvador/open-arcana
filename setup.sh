@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Open Arcana Setup Wizard
 # Compatible with bash 3.2+ (macOS default)
-VERSION="1.0.4"
+VERSION="1.0.5"
 
 # ── Colors & Styles ───────────────────────────────────────
 BOLD=$'\033[1m'
@@ -48,7 +48,7 @@ MODULE_NAMES=(
 
 MODULE_DESCS=(
   "6 rules that prevent AI from agreeing without evidence."
-  "14 rules to minimize context waste and API costs."
+  "17 rules to minimize context waste and API costs."
   "Validates frontmatter, enforces daily notes, checks writes."
   "Blocks prompt injection in memory files, guards people data."
   "Opinionated folder structure with 18 note templates."

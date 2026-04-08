@@ -66,6 +66,12 @@ The cap exists because each subagent inherits context from the parent session. W
 
 **Exception**: SDD pipelines with `/sdd-execute` may exceed the cap if there are 8+ independent issues. Log the exception.
 
+## Effort level awareness (rule TE-16)
+Since Claude Code 2.1.94, the default effort level changed from medium to high for API-key, Bedrock/Vertex/Foundry, Team, and Enterprise users. High effort = more reasoning tokens per turn = better quality but higher cost. For routine vault operations (scheduled tasks, syncs, maintenance), consider `/effort medium` to save tokens. Keep high for debugging, architecture, and multi-step reasoning. The agent should NOT change effort level autonomously, only suggest when appropriate.
+
+## MCP result size override (rule TE-17)
+Since Claude Code 2.1.91, MCP tools can annotate results with `_meta["anthropic/maxResultSizeChars"]` (up to 500K) to prevent truncation of large payloads like database schemas. When building custom MCPs or working with MCPs that return large results (Smart Connections, Notion queries with many pages), be aware that untruncated large results consume more context. If a large MCP result is only partially needed, summarize it before proceeding.
+
 ## Enforcement (auto-check)
 
 Before each compaction or when reaching ~50% of the context window:
