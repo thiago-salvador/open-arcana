@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arcana Analytics</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    :root { --bg: #ffffff; --text: #1a1a2e; --card: #f8f9fa; --border: #e2e8f0; --accent: #6366f1; --accent2: #818cf8; --muted: #94a3b8; }
+    .dark { --bg: #0f0f1a; --text: #e2e8f0; --card: #1a1a2e; --border: #2d2d44; --accent: #818cf8; --accent2: #6366f1; --muted: #64748b; }
+    body { font-family: system-ui, -apple-system, sans-serif; transition: background 0.3s, color 0.3s; }
+    .heat-0 { fill: var(--card); } .heat-1 { fill: #c6dbef; } .heat-2 { fill: #9ecae1; }
+    .heat-3 { fill: #6baed6; } .heat-4 { fill: #3182bd; } .heat-5 { fill: #08519c; }
+    .dark .heat-1 { fill: #1e3a5f; } .dark .heat-2 { fill: #2a5f8f; }
+    .dark .heat-3 { fill: #3182bd; } .dark .heat-4 { fill: #4292c6; } .dark .heat-5 { fill: #6baed6; }
+    .tab-active { border-bottom: 2px solid var(--accent); color: var(--accent); }
+    .tab-inactive { border-bottom: 2px solid transparent; color: var(--muted); }
+    .tab-inactive:hover { color: var(--text); }
+    canvas { max-height: 320px; }
+  </style>
+</head>
+<body x-data="App()" :class="{ dark: darkMode }" style="background: var(--bg); color: var(--text);">
+
+  <!-- Header -->
+  <div class="max-w-7xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold" style="color: var(--accent);">Arcana Analytics</h1>
+        <p class="text-sm" style="color: var(--muted);" x-text="data ? 'Generated: ' + new Date(data.generated).toLocaleString() + ' | Range: ' + data.range : 'Loading...'"></p>
+      </div>
+      <button @click="toggleDark()" class="p-2 rounded-lg" style="background: var(--card); border: 1px solid var(--border);">
+        <span x-text="darkMode ? '☀️' : '🌙'"></span>
+      </button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-6 mb-8 border-b" style="border-color: var(--border);">
+      <template x-for="t in ['overview','sessions','cost','commands','context']">
+        <button @click="switchTab(t)" :class="tab === t ? 'tab-active' : 'tab-inactive'"
+                class="pb-3 text-sm font-medium capitalize cursor-pointer transition-colors" x-text="t"></button>
+      </template>
+    </div>
+
+    <!-- Loading / Error state -->
+    <div x-show="!data && !loadError" class="text-center py-20" style="color: var(--muted);">
+      <p>Loading analytics data...</p>
+    </div>
+    <div x-show="loadError" class="text-center py-20">
+      <p class="text-lg font-semibold" style="color: #ef4444;">Could not load data.json</p>
+      <p class="mt-2" style="color: var(--muted);">Run the analytics engine first to generate the data:</p>
+      <pre class="mt-3 inline-block px-4 py-2 rounded-lg text-sm" style="background: var(--card); border: 1px solid var(--border);">SINCE_DAYS=7 python3 analytics_engine.py</pre>
+    </div>
+
+    <!-- Tab: Overview -->
+    <div x-show="tab === 'overview' && data" x-cloak>
+      <!-- KPI Cards -->
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
+          <div class="text-sm" style="color: var(--muted);">Total Cost</div>
+          <div class="text-3xl font-bold" x-text="'$' + (data.summary.total_cost || 0).toFixed(2)"></div>
+        </div>
+        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
+          <div class="text-sm" style="color: var(--muted);">Sessions</div>
+          <div class="text-3xl font-bold" x-text="data.summary.total_sessions || 0"></div>
+        </div>
+        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
+          <div class="text-sm" style="color: var(--muted);">Avg HIR</div>
+          <div class="text-3xl font-bold" x-text="((data.summary.avg_hir || 0) * 100).toFixed(1) + '%'"></div>
+        </div>
+        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
+          <div class="text-sm" style="color: var(--muted);">Avg Frustration</div>
+          <div class="text-3xl font-bold" x-text="(data.summary.avg_frustration || 0).toFixed(1) + '/10'"></div>
+        </div>
+        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
+          <div class="text-sm" style="color: var(--muted);">Tool Precision</div>
+          <div class="text-3xl font-bold" x-text="((data.summary.avg_tool_precision || 0) * 100).toFixed(1) + '%'"></div>
+        </div>
+      </div>
+
+      <!-- Daily Trend Chart -->
+      <div class="rounded-xl p-6 mb-8" style="background: var(--card); border: 1px solid var(--border);">
+        <h3 class="text-lg font-semibold mb-4">Daily Trend</h3>
+        <canvas id="dailyTrendChart"></canvas>
+      </div>
+
+      <!-- Heatmap -->
+      <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
+        <h3 class="text-lg font-semibold mb-4">Activity Heatmap (tokens by day/hour)</h3>
+        <div id="heatmapContainer" class="overflow-x-auto"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Sessions -->
+    <div x-show="tab === 'sessions' && data" x-cloak>
+      <div class="rounded-xl overflow-hidden" style="background: var(--card); border: 1px solid var(--border);">
+        <table class="w-full text-sm">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <th class="text-left p-3 cursor-pointer" @click="sortSessions('cost')">Cost <span x-text="sortKey==='cost' ? (sortAsc ? '↑' : '↓') : ''"></span></th>
+              <th class="text-left p-3 cursor-pointer" @click="sortSessions('tokens')">Tokens <span x-text="sortKey==='tokens' ? (sortAsc ? '↑' : '↓') : ''"></span></th>
+              <th class="text-left p-3 cursor-pointer" @click="sortSessions('hir')">HIR <span x-text="sortKey==='hir' ? (sortAsc ? '↑' : '↓') : ''"></span></th>
+              <th class="text-left p-3 cursor-pointer" @click="sortSessions('frustration')">Frustration <span x-text="sortKey==='frustration' ? (sortAsc ? '↑' : '↓') : ''"></span></th>
+              <th class="text-left p-3">Project</th>
+              <th class="text-left p-3">First Prompt</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="s in sortedSessions()" :key="s.session_id">
+              <tr style="border-bottom: 1px solid var(--border);">
+                <td class="p-3 font-mono" x-text="'$' + s.cost.toFixed(2)"></td>
+                <td class="p-3 font-mono" x-text="s.tokens.toLocaleString()"></td>
+                <td class="p-3" x-text="(s.hir * 100).toFixed(1) + '%'"></td>
+                <td class="p-3" x-text="s.frustration + '/10'"></td>
+                <td class="p-3 text-xs" x-text="s.project"></td>
+                <td class="p-3 text-xs truncate max-w-xs" x-text="s.first_prompt"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab: Cost -->
+    <div x-show="tab === 'cost' && data" x-cloak>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
+          <h3 class="text-lg font-semibold mb-4">Cost by Project</h3>
+          <canvas id="projectCostChart"></canvas>
+        </div>
+        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
+          <h3 class="text-lg font-semibold mb-4">Daily Cost</h3>
+          <canvas id="dailyCostChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Commands -->
+    <div x-show="tab === 'commands' && data" x-cloak>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
+          <h3 class="text-lg font-semibold mb-4">Command Frequency</h3>
+          <canvas id="commandChart"></canvas>
+        </div>
+        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
+          <h3 class="text-lg font-semibold mb-4">Subagent Efficiency by Project</h3>
+          <div class="space-y-3">
+            <template x-for="p in data.projects" :key="p.project">
+              <div class="flex items-center gap-3">
+                <span class="text-xs w-32 truncate" x-text="p.project"></span>
+                <div class="flex-1 h-4 rounded-full overflow-hidden" style="background: var(--border);">
+                  <div class="h-full rounded-full" style="background: var(--accent);"
+                       :style="'width:' + Math.min(100, (p.cost > 0 ? 100 : 0)) + '%'"></div>
+                </div>
+                <span class="text-xs font-mono" x-text="'$' + p.cost.toFixed(2)"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Context -->
+    <div x-show="tab === 'context' && data" x-cloak>
+      <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
+        <h3 class="text-lg font-semibold mb-4">Context Fill Rate (Top Sessions)</h3>
+        <canvas id="contextFillChart"></canvas>
+      </div>
+      <p class="text-xs mt-2" style="color: var(--muted);">Each line represents a session. X-axis: assistant message index, Y-axis: cumulative input tokens.</p>
+    </div>
+  </div>
+
+  <script>
+  function App() {
+    return {
+      darkMode: localStorage.getItem('arcana-dark') === 'true',
+      tab: 'overview',
+      data: null,
+      loadError: false,
+      sortKey: 'cost',
+      sortAsc: false,
+      charts: {},
+
+      async init() {
+        try {
+          const res = await fetch('data.json');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          this.data = await res.json();
+          this.$nextTick(() => this.renderCharts());
+        } catch (e) {
+          console.error('Failed to load data.json:', e);
+          this.loadError = true;
+        }
+      },
+
+      toggleDark() {
+        this.darkMode = !this.darkMode;
+        localStorage.setItem('arcana-dark', this.darkMode);
+        // Re-render charts with new colors
+        this.$nextTick(() => this.renderCharts());
+      },
+
+      switchTab(t) {
+        this.tab = t;
+        this.$nextTick(() => this.renderCharts());
+      },
+
+      getColor(name) {
+        const style = getComputedStyle(document.body);
+        return style.getPropertyValue('--' + name).trim();
+      },
+
+      sortSessions(key) {
+        if (this.sortKey === key) {
+          this.sortAsc = !this.sortAsc;
+        } else {
+          this.sortKey = key;
+          this.sortAsc = false;
+        }
+      },
+
+      sortedSessions() {
+        if (!this.data) return [];
+        const sessions = [...this.data.costly_sessions];
+        const key = this.sortKey;
+        const dir = this.sortAsc ? 1 : -1;
+        sessions.sort((a, b) => (a[key] - b[key]) * dir);
+        return sessions;
+      },
+
+      destroyChart(id) {
+        if (this.charts[id]) {
+          this.charts[id].destroy();
+          delete this.charts[id];
+        }
+      },
+
+      renderCharts() {
+        if (!this.data) return;
+        const accent = this.getColor('accent');
+        const accent2 = this.getColor('accent2');
+        const muted = this.getColor('muted');
+        const text = this.getColor('text');
+        const gridColor = this.getColor('border');
+
+        const commonOptions = {
+          animation: false,
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: { legend: { labels: { color: text } } },
+          scales: {
+            x: { ticks: { color: muted }, grid: { color: gridColor } },
+            y: { ticks: { color: muted }, grid: { color: gridColor } },
+          },
+        };
+
+        // Daily Trend
+        if (this.tab === 'overview') {
+          const el = document.getElementById('dailyTrendChart');
+          if (el) {
+            this.destroyChart('dailyTrend');
+            const daily = this.data.daily;
+            this.charts.dailyTrend = new Chart(el, {
+              type: 'line',
+              data: {
+                labels: daily.map(d => d.date),
+                datasets: [
+                  { label: 'Sessions', data: daily.map(d => d.sessions), borderColor: accent, backgroundColor: accent + '33', fill: true, tension: 0.3 },
+                  { label: 'Cost ($)', data: daily.map(d => d.cost), borderColor: accent2, backgroundColor: accent2 + '33', fill: false, tension: 0.3, yAxisID: 'y1' },
+                ],
+              },
+              options: {
+                ...commonOptions,
+                scales: {
+                  ...commonOptions.scales,
+                  y1: { position: 'right', ticks: { color: muted }, grid: { display: false } },
+                },
+              },
+            });
+          }
+          this.renderHeatmap();
+        }
+
+        // Project Cost
+        if (this.tab === 'cost') {
+          const projEl = document.getElementById('projectCostChart');
+          if (projEl) {
+            this.destroyChart('projectCost');
+            const projs = this.data.projects.slice(0, 15);
+            this.charts.projectCost = new Chart(projEl, {
+              type: 'bar',
+              data: {
+                labels: projs.map(p => p.project),
+                datasets: [{ label: 'Cost ($)', data: projs.map(p => p.cost), backgroundColor: accent + 'cc' }],
+              },
+              options: { ...commonOptions, indexAxis: 'y' },
+            });
+          }
+
+          const costEl = document.getElementById('dailyCostChart');
+          if (costEl) {
+            this.destroyChart('dailyCost');
+            const daily = this.data.daily;
+            this.charts.dailyCost = new Chart(costEl, {
+              type: 'line',
+              data: {
+                labels: daily.map(d => d.date),
+                datasets: [{ label: 'Daily Cost ($)', data: daily.map(d => d.cost), borderColor: accent, backgroundColor: accent + '33', fill: true, tension: 0.3 }],
+              },
+              options: commonOptions,
+            });
+          }
+        }
+
+        // Command Frequency
+        if (this.tab === 'commands') {
+          const cmdEl = document.getElementById('commandChart');
+          if (cmdEl) {
+            this.destroyChart('command');
+            const freq = this.data.command_frequency;
+            const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 20);
+            this.charts.command = new Chart(cmdEl, {
+              type: 'bar',
+              data: {
+                labels: sorted.map(([cmd]) => '/' + cmd),
+                datasets: [{ label: 'Uses', data: sorted.map(([, n]) => n), backgroundColor: accent + 'cc' }],
+              },
+              options: { ...commonOptions, indexAxis: 'y' },
+            });
+          }
+        }
+
+        // Context Fill
+        if (this.tab === 'context') {
+          const ctxEl = document.getElementById('contextFillChart');
+          if (ctxEl) {
+            this.destroyChart('contextFill');
+            const fills = this.data.context_fills.slice(0, 5);
+            const colors = [accent, accent2, '#f59e0b', '#10b981', '#ef4444'];
+            const maxLen = Math.max(...fills.map(f => f.fill.length), 1);
+            const labels = Array.from({ length: maxLen }, (_, i) => i);
+            const datasets = fills.map((f, i) => ({
+              label: f.project + ' (' + f.session_id.substring(0, 8) + ')',
+              data: f.fill.map(([idx, val]) => ({ x: idx, y: val })),
+              borderColor: colors[i % colors.length],
+              fill: false,
+              tension: 0.2,
+              pointRadius: 0,
+            }));
+            this.charts.contextFill = new Chart(ctxEl, {
+              type: 'line',
+              data: { labels, datasets },
+              options: {
+                ...commonOptions,
+                scales: {
+                  x: { type: 'linear', title: { display: true, text: 'Message Index', color: muted }, ticks: { color: muted }, grid: { color: gridColor } },
+                  y: { title: { display: true, text: 'Cumulative Input Tokens', color: muted }, ticks: { color: muted }, grid: { color: gridColor } },
+                },
+              },
+            });
+          }
+        }
+      },
+
+      renderHeatmap() {
+        const container = document.getElementById('heatmapContainer');
+        if (!container || !this.data) return;
+
+        const heatmap = this.data.heatmap;
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const hours = 24;
+        const cellSize = 18;
+        const gap = 3;
+        const labelW = 36;
+        const labelH = 20;
+        const w = labelW + hours * (cellSize + gap);
+        const h = labelH + days.length * (cellSize + gap);
+
+        // Find max for color scale
+        let maxVal = 0;
+        for (const dow of days) {
+          for (let hr = 0; hr < hours; hr++) {
+            const val = (heatmap[dow] && heatmap[dow][hr]) || 0;
+            if (val > maxVal) maxVal = val;
+          }
+        }
+
+        const heatClass = (val) => {
+          if (!val || !maxVal) return 'heat-0';
+          const ratio = val / maxVal;
+          if (ratio < 0.1) return 'heat-0';
+          if (ratio < 0.25) return 'heat-1';
+          if (ratio < 0.45) return 'heat-2';
+          if (ratio < 0.65) return 'heat-3';
+          if (ratio < 0.85) return 'heat-4';
+          return 'heat-5';
+        };
+
+        let svg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">`;
+
+        // Hour labels
+        for (let hr = 0; hr < hours; hr++) {
+          if (hr % 3 === 0) {
+            svg += `<text x="${labelW + hr * (cellSize + gap) + cellSize / 2}" y="${labelH - 4}" text-anchor="middle" fill="var(--muted)" font-size="10">${hr}</text>`;
+          }
+        }
+
+        // Day rows
+        for (let di = 0; di < days.length; di++) {
+          const y = labelH + di * (cellSize + gap);
+          svg += `<text x="0" y="${y + cellSize / 2 + 4}" fill="var(--muted)" font-size="10">${days[di]}</text>`;
+          for (let hr = 0; hr < hours; hr++) {
+            const x = labelW + hr * (cellSize + gap);
+            const val = (heatmap[days[di]] && heatmap[days[di]][hr]) || 0;
+            svg += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="3" class="${heatClass(val)}"><title>${days[di]} ${hr}:00 - ${val.toLocaleString()} tokens</title></rect>`;
+          }
+        }
+
+        svg += '</svg>';
+        container.innerHTML = svg;
+      },
+    };
+  }
+  </script>
+</body>
+</html>

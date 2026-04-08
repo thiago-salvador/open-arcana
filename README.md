@@ -20,6 +20,7 @@ Built from a production system running 16 hooks, 27 commands, and 500+ automated
 | **Connected Sources** | Templates for orchestrating 16+ MCP data sources (Teams, Notion, Calendar, Read.AI, etc). |
 | **Scheduled Tasks** | Patterns for autonomous recurring agents: morning briefing, end-of-day, weekly review. |
 | **Vault Health** | 500+ automated checks for frontmatter, orphans, broken links, and index consistency. |
+| **Analytics Dashboard** | 6 behavioral metrics (HIR, frustration, tool precision, context fill, command frequency, subagent efficiency) + interactive HTML dashboard. |
 
 Every module is optional. Install what you need, skip what you don't.
 

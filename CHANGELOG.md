@@ -2,6 +2,19 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.0] - 2026-04-08 -- Analytics Dashboard
+
+### Added
+- **New module: `analytics`** with 6 behavioral metrics computed from session JSONL data
+- **Metrics:** HIR (Human Intervention Rate), Context Fill Rate, Frustration Index, Tool Call Precision, Skill/Command Frequency, Subagent Efficiency
+- **Dashboard:** Single-file HTML with Tailwind + Alpine.js + Chart.js, dark/light theme, 5 tabs (Overview, Sessions, Cost, Commands, Context)
+- **Command:** `/analytics` runs the engine and opens the dashboard
+- **Zero new dependencies:** Pure Python engine, CDN-only frontend
+
+### Changed
+- setup.sh: added `analytics` to MODULE_KEYS, added `tools/` handler to `install_module()`
+- README.md: added Analytics Dashboard row to modules table
+
 ## [1.0.6] - 2026-04-07
 
 ### Added

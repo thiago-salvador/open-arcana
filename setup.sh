@@ -31,7 +31,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Module registry (indexed arrays, bash 3.2 compatible) ─
-MODULE_KEYS=(anti-sycophancy token-efficiency enforcement-hooks security-hooks vault-structure retrieval-system commands connected-sources scheduled-tasks vault-health)
+MODULE_KEYS=(anti-sycophancy token-efficiency enforcement-hooks security-hooks vault-structure retrieval-system commands connected-sources scheduled-tasks vault-health analytics)
 
 MODULE_NAMES=(
   "Anti-Sycophancy Protocol"
@@ -44,6 +44,7 @@ MODULE_NAMES=(
   "Connected Sources Config"
   "Scheduled Tasks"
   "Vault Health Checks"
+  "Analytics Dashboard"
 )
 
 MODULE_DESCS=(
@@ -57,6 +58,7 @@ MODULE_DESCS=(
   "Template for orchestrating 16+ MCP data sources."
   "Templates for morning briefing, end-of-day, weekly review."
   "500+ automated checks for vault consistency."
+  "6 behavioral metrics + local HTML dashboard from session data."
 )
 
 MODULE_DESCS2=(
@@ -70,6 +72,7 @@ MODULE_DESCS2=(
   "Teams, Notion, Calendar, Read.AI, GitHub, etc."
   "Patterns for autonomous recurring agent tasks."
   "Frontmatter, orphans, broken links, index sync."
+  "HIR, frustration, tool precision, context fill, commands, subagents."
 )
 
 # Category grouping: indices into MODULE_KEYS
@@ -77,10 +80,10 @@ CAT_NAMES=("GUARDRAILS" "ENFORCEMENT" "VAULT MANAGEMENT" "AUTOMATION")
 CAT_INDICES_0="0 1"
 CAT_INDICES_1="2 3"
 CAT_INDICES_2="4 5"
-CAT_INDICES_3="6 7 8 9"
+CAT_INDICES_3="6 7 8 9 10"
 
 # Module activation state (Y/N), same order as MODULE_KEYS
-MODULE_ACTIVE=(Y Y Y Y Y Y Y Y Y Y)
+MODULE_ACTIVE=(Y Y Y Y Y Y Y Y Y Y Y)
 
 INSTALLED_FILES=0
 INSTALLED_HOOKS=0
@@ -487,6 +490,18 @@ install_module() {
     for ex in "$module_dir"/examples/*; do
       [[ -f "$ex" ]] || continue
       copy_file "$ex" "$target/scheduled-tasks/$(basename "$ex")"
+    done
+  fi
+
+  # Tools
+  if [[ -d "$module_dir/tools" ]]; then
+    mkdir -p "$target/tools"
+    for tool in "$module_dir"/tools/*; do
+      [[ -f "$tool" ]] || continue
+      local name
+      name=$(basename "$tool")
+      copy_file "$tool" "$target/tools/$name"
+      chmod +x "$target/tools/$name"
     done
   fi
 
