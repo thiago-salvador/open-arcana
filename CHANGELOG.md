@@ -2,6 +2,22 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.6] - 2026-04-07
+
+### Added
+- **Session branching**: `session_index.py` now builds a message tree from `uuid`/`parentUuid` fields in Claude Code JSONL sessions. Detects branch points (multiple children for the same parent), computes tree depth, and labels each branch with the nearest human prompt. New fields in the index: `branch_count`, `max_depth`, `branch_points`. Markdown table now includes a "Branches" column.
+- **`/tree` command**: Visualize any session's decision tree with ASCII art. Shows branch points, alternative paths, and conversation flow. Supports keyword search, session selection, and both branching (tree) and linear (timeline) display modes. Token budget: 2-5K per visualization.
+- **Community packages**: Third-party modules can now be installed from git repos or local directories. New CLI flags: `--install-package <source>`, `--uninstall-package <name>`, `--list-packages`. Packages use an `arcana-package.yaml` manifest with version constraints, module dependencies, and file declarations. Full spec in `docs/packages.md`.
+- **Steering messages documentation**: README now explains Claude Code's mid-execution steering (Shift+Tab) and how it interacts with Open Arcana's session tree, anti-sycophancy protocol, and session titles.
+- Example community package: `examples/package/` with a "git-workflow" package (git conventions rule + `/git-review` command).
+
+### Changed
+- `core/rules/definition-of-done.md`: expanded from skeleton (3 rules + test table) to full 3-phase DoD process. Now requires: (1) DoD table upfront before implementation with explicit criteria + tests, presented to user for approval; (2) tracking during implementation; (3) validation with 100% PASS threshold, evidence per criterion, and structured final table. Added test matrix covering 10 change types (code, UI, API, config, bug fix, refactor, files, vault, scheduled tasks, commands). Added "when to ask" guidelines and 8 prohibited anti-patterns. Automatically distributed via `setup.sh --update` (glob copy since v1.0.4).
+- setup.sh: ~1033 -> ~1609 lines. Added `install_package()`, `uninstall_package()`, `list_packages()` functions plus `version_gte()`, `check_version_constraint()` helpers. 3 new CLI flags, updated help text. `generate_config()` now includes installed packages.
+- session_index.py: Added `build_message_tree()` and `_find_branch_label()` functions. Markdown output includes Branches column.
+- README.md: 3 new sections (Session Branching, Steering Messages, Community Packages), updated command count (21 -> 22), updated flags list, updated Contributing section.
+- Commands module: 22 commands (was 21)
+
 ## [1.0.5] - 2026-04-07
 
 ### Added

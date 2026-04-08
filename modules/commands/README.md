@@ -23,7 +23,7 @@ These commands assume you have a working vault with the structure defined in the
 | `/contrarian` | Anti-sycophancy analysis. Searches for excessive agreement, unverified facts, stale memories, and missing divergences. Produces a structured report with metrics. | No |
 | `/audit-gaps` | Detects vault gaps: uncatalogued people, projects without notes, action items without tasks, decisions without records. Scans external sources and compares. | Yes |
 | `/post-meeting` | Processes meeting transcripts into vault notes. Creates decision records, extracts action items as tasks, updates person notes and indexes. | No |
-| `/pessoa` | Person briefing. Pulls complete context from vault, team chat, meeting transcripts, calendar, task manager, and LinkedIn. Offers to create a person note if missing. | Yes |
+| `/person` | Person briefing. Pulls complete context from vault, team chat, meeting transcripts, calendar, task manager, and LinkedIn. Offers to create a person note if missing. | Yes |
 | `/distill` | Extracts reusable workflows from the current session. Identifies 5+ step sequences with coherent outcomes, classifies as command/rule/template candidates, asks before creating. | Yes |
 | `/recall` | Cross-session search. Searches previous sessions by keyword or prompt content using the session index. Requires `tools/session_index.py`. | No |
 | `/model-review` | Proactive user model review. Detects uncaptured preferences, stale memories, missing project records, and new workflows. Read-only. | No |

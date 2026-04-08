@@ -1,5 +1,5 @@
 ---
-name: pessoa
+name: person
 description: "Pulls complete context about a person -- vault, team chat, meeting transcripts, calendar, tasks. Use before meetings with someone. Cross-references ALL sources in parallel: vault people folder, team chats, meeting transcripts, calendar events, task manager. Offers to create person note if missing."
 arguments:
   - name: name
@@ -9,7 +9,7 @@ dependencies: "microsoft-graph MCP, read-ai MCP, notion MCP, linkedin MCP, WebSe
 allowed-tools: "Read,Write,Edit,Glob,Grep,Bash,WebFetch,WebSearch,mcp__read-ai__*,mcp__microsoft-graph__*,mcp__notion__*,mcp__linkedin__*"
 ---
 
-# /pessoa $ARGUMENTS
+# /person $ARGUMENTS
 
 Complete briefing about a person. Cross-references ALL sources.
 

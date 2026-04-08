@@ -37,7 +37,7 @@ Use ONLY when the task requires it:
 > - `boot-protocol.md` - Boot + retrieval layers
 > - `connected-sources.md` - MCP sources + known issues
 > - `content.md` - Editorial identity (scope: 30-Content/)
-> - `pessoas.md` - People note format (scope: 70-People/)
+> - `people.md` - People note format (scope: 70-People/)
 > - `memory/MEMORY.md` - Memory files (feedback, project, reference)
 ```
 

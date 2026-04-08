@@ -1,0 +1,19 @@
+name: "git-workflow"
+version: "1.0.0"
+description: "Git conventions, commit hygiene, and a /git-review command for code review workflows"
+author: "Open Arcana Community"
+homepage: "https://github.com/open-arcana/arcana-git-workflow"
+license: "MIT"
+
+requires:
+  open-arcana: ">=1.0.0"
+  modules: []
+
+provides:
+  rules:
+    - git-conventions.md
+  hooks: []
+  commands:
+    - git-review.md
+  templates: []
+  tools: []

@@ -83,11 +83,11 @@ REL_PATH="${FILE_PATH#$VAULT/}"
 DOMAIN=""
 DOMAIN_PATH=""
 case "$REL_PATH" in
-  10-Work/Product/*|10-Work/Produto/*) DOMAIN="work-product"; DOMAIN_PATH="10-Work/Product" ;;
+  10-Work/Product/*) DOMAIN="work-product"; DOMAIN_PATH="10-Work/Product" ;;
   10-Work/Growth/*) DOMAIN="work-growth"; DOMAIN_PATH="10-Work/Growth" ;;
   10-Work/Analytics/*) DOMAIN="work-analytics"; DOMAIN_PATH="10-Work/Analytics" ;;
-  10-Work/Meetings/*|10-Work/Reuniões/*) DOMAIN="work-meetings"; DOMAIN_PATH="10-Work/Meetings" ;;
-  10-Work/Errors/*|10-Work/Erros/*) DOMAIN="work-errors"; DOMAIN_PATH="10-Work/Errors" ;;
+  10-Work/Meetings/*) DOMAIN="work-meetings"; DOMAIN_PATH="10-Work/Meetings" ;;
+  10-Work/Errors/*) DOMAIN="work-errors"; DOMAIN_PATH="10-Work/Errors" ;;
   10-Work/*) DOMAIN="work"; DOMAIN_PATH="10-Work" ;;
   15-Projects/*) DOMAIN="projects"; DOMAIN_PATH="15-Projects" ;;
   20-Studio/*) DOMAIN="studio"; DOMAIN_PATH="20-Studio" ;;
@@ -96,8 +96,8 @@ case "$REL_PATH" in
   30-Content/33-*/*|30-Content/LinkedIn/*) DOMAIN="linkedin"; DOMAIN_PATH="30-Content" ;;
   30-Content/32-*/*|30-Content/Articles/*) DOMAIN="articles"; DOMAIN_PATH="30-Content" ;;
   30-Content/*) DOMAIN="content"; DOMAIN_PATH="30-Content" ;;
-  60-Research/*|60-Pesquisa/*) DOMAIN="research"; DOMAIN_PATH="60-Research" ;;
-  70-People/*|70-Pessoas/*) DOMAIN="people"; DOMAIN_PATH="70-People" ;;
+  60-Research/*) DOMAIN="research"; DOMAIN_PATH="60-Research" ;;
+  70-People/*) DOMAIN="people"; DOMAIN_PATH="70-People" ;;
   85-Rules/*) DOMAIN="rules"; DOMAIN_PATH="85-Rules" ;;
   Daily-Notes/*) DOMAIN="daily"; DOMAIN_PATH="Daily-Notes" ;;
   *) exit 0 ;;  # Unknown domain, skip
@@ -160,7 +160,7 @@ case "$DOMAIN" in
     echo "  - Check related rules in 85-Rules/"
     ;;
   daily)
-    echo "Context: Daily Note editing. Check Estado Atual section for continuity."
+    echo "Context: Daily Note editing. Check Current State section for continuity."
     ;;
 esac
 

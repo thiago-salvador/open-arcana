@@ -32,7 +32,7 @@ if echo "$PROMPT" | grep -qE '^\s*/'; then
         /dump)            TITLE="Brain Dump" ;;
         /capture)         TITLE="Knowledge Capture" ;;
         /process)         TITLE="Material Processing" ;;
-        /pessoa)          TITLE="Person Briefing" ;;
+        /person)          TITLE="Person Briefing" ;;
         /post-meeting)    TITLE="Post-Meeting" ;;
         /health)          TITLE="Vault Health" ;;
         /scan)            TITLE="File Scan" ;;
@@ -57,7 +57,7 @@ if [ -z "$TITLE" ]; then
         TITLE="Vault Ops"
     elif echo "$PROMPT_LOWER" | grep -qE '\bdeploy\b|vercel\b|supabase\b|firebase\b|build\b'; then
         TITLE="Dev/Deploy"
-    elif echo "$PROMPT_LOWER" | grep -qE '\bpost\b|artigo\b|content\b|linkedin\b|instagram\b'; then
+    elif echo "$PROMPT_LOWER" | grep -qE '\bpost\b|article\b|content\b|linkedin\b|instagram\b'; then
         TITLE="Content"
     elif echo "$PROMPT_LOWER" | grep -qE '\bdebug\b|fix\b|error\b|bug\b|broken\b'; then
         TITLE="Debug"

@@ -53,7 +53,7 @@ else:
         vault_slug = "-" + vault_slug
     PROJECT_DIR = PROJECTS_DIR / vault_slug
 
-# Stopwords for keyword extraction (EN + PT mixed, kept minimal)
+# Stopwords for keyword extraction (EN, kept minimal)
 STOPWORDS = {
     "the", "and", "for", "that", "this", "with", "from", "have", "will",
     "been", "they", "their", "there", "what", "when", "where", "which",
@@ -61,11 +61,7 @@ STOPWORDS = {
     "some", "other", "more", "also", "just", "like", "make", "only",
     "very", "does", "done", "here", "each", "over", "after", "before",
     "being", "most", "your", "were", "these", "those", "such", "well",
-    "para", "como", "mais", "isso", "esse", "essa", "esta", "este",
-    "pode", "pelo", "pela", "entre", "sobre", "desde", "porque", "quando",
-    "todas", "todos", "muito", "fazer", "cada", "ainda", "mesmo", "outra",
-    "outro", "suas", "seus", "minha", "nosso", "voce", "dele", "dela",
-    "aqui", "onde", "quem", "qual", "quais",
+    "every", "much", "still", "same", "many", "need", "want", "know",
     # Tool/system noise
     "tool", "result", "system", "reminder", "content", "function", "parameter",
     "true", "false", "null", "none", "type", "name", "value", "file",
@@ -110,6 +106,146 @@ def extract_keywords(texts, min_len=4, min_freq=2, max_keywords=15):
     return keywords[:max_keywords]
 
 
+def build_message_tree(lines):
+    """Build a tree from JSONL lines using uuid/parentUuid fields.
+
+    Returns:
+        nodes: dict mapping uuid -> {type, parent, children, depth, text, is_human}
+        branch_points: list of dicts with branch metadata
+        max_depth: int
+    """
+    nodes = {}
+    children_map = {}  # parentUuid -> [child uuids]
+    ordered_uuids = []
+
+    for line in lines:
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        uuid = obj.get("uuid")
+        if not uuid:
+            continue
+
+        parent_uuid = obj.get("parentUuid")
+        msg_type = obj.get("type", "")
+        is_sidechain = obj.get("isSidechain", False)
+        user_type = obj.get("userType", "")
+
+        # Extract human-readable text for labeling
+        text = ""
+        is_human = False
+        if msg_type == "user" and not is_sidechain:
+            content = obj.get("message", {}).get("content", "")
+            candidate = extract_text_content(content)
+            if candidate and is_human_prompt(obj) and user_type != "tool":
+                text = candidate
+                is_human = True
+
+        nodes[uuid] = {
+            "type": msg_type,
+            "parent": parent_uuid,
+            "children": [],
+            "depth": 0,
+            "text": text,
+            "is_human": is_human,
+            "is_sidechain": is_sidechain,
+        }
+        ordered_uuids.append(uuid)
+
+        if parent_uuid:
+            if parent_uuid not in children_map:
+                children_map[parent_uuid] = []
+            children_map[parent_uuid].append(uuid)
+
+    # Wire children into nodes
+    for parent_uuid, child_list in children_map.items():
+        if parent_uuid in nodes:
+            nodes[parent_uuid]["children"] = child_list
+
+    # Compute depths via BFS from roots
+    roots = [u for u in ordered_uuids if not nodes[u]["parent"] or nodes[u]["parent"] not in nodes]
+    queue = [(r, 0) for r in roots]
+    max_depth = 0
+    while queue:
+        uid, depth = queue.pop(0)
+        nodes[uid]["depth"] = depth
+        if depth > max_depth:
+            max_depth = depth
+        for child in nodes[uid]["children"]:
+            if child in nodes:
+                queue.append((child, depth + 1))
+
+    # Detect branch points: nodes with >1 child
+    branch_points = []
+    for uid, node in nodes.items():
+        if len(node["children"]) > 1:
+            # Find the nearest human prompt text as label
+            label = _find_branch_label(uid, nodes)
+            branch_points.append({
+                "parentId": uid,
+                "depth": node["depth"],
+                "children_count": len(node["children"]),
+                "label": label,
+            })
+
+    return nodes, branch_points, max_depth
+
+
+def _find_branch_label(branch_uuid, nodes):
+    """Find the nearest human prompt text near a branch point for labeling.
+
+    Strategy: look at the branch node itself, then walk each child subtree
+    for a human prompt, then walk up ancestors. Accepts any node with text
+    as a last resort.
+    """
+    node = nodes.get(branch_uuid, {})
+
+    # Check the branch node itself
+    if node.get("is_human") and node.get("text"):
+        return node["text"][:100]
+
+    # Walk children (BFS, max 10 nodes) to find first human prompt
+    for child_uuid in node.get("children", []):
+        queue = [child_uuid]
+        visited = set()
+        steps = 0
+        while queue and steps < 10:
+            current = queue.pop(0)
+            if current in visited or current not in nodes:
+                continue
+            visited.add(current)
+            steps += 1
+            cn = nodes[current]
+            if cn.get("is_human") and cn.get("text"):
+                return cn["text"][:100]
+            for gc in cn.get("children", []):
+                queue.append(gc)
+
+    # Walk up ancestors (up to 15 levels) for human prompt
+    current = node.get("parent")
+    for _ in range(15):
+        if not current or current not in nodes:
+            break
+        pn = nodes[current]
+        if pn.get("is_human") and pn.get("text"):
+            return pn["text"][:100]
+        current = pn.get("parent")
+
+    # Last resort: walk up again accepting any text at all
+    current = node.get("parent")
+    for _ in range(15):
+        if not current or current not in nodes:
+            break
+        pn = nodes[current]
+        if pn.get("text"):
+            return pn["text"][:100]
+        current = pn.get("parent")
+
+    return ""
+
+
 def parse_session_for_index(jsonl_path):
     """Parse a JSONL session, return index-ready data."""
     prompts = []
@@ -122,6 +258,10 @@ def parse_session_for_index(jsonl_path):
             lines = f.readlines()
     except Exception:
         return None
+
+    # Build message tree for branching detection
+    nodes, branch_points, max_depth = build_message_tree(lines)
+    branch_count = len(branch_points)
 
     for line in lines:
         try:
@@ -175,6 +315,9 @@ def parse_session_for_index(jsonl_path):
         "prompt_count": len(prompts),
         "total_tokens": total_tokens,
         "all_prompts": [p[:500] for p in prompts],
+        "branch_count": branch_count,
+        "max_depth": max_depth,
+        "branch_points": branch_points,
     }
 
 
@@ -251,15 +394,17 @@ def build_index(incremental=False):
         "",
         f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')} | Total: {len(all_entries)} sessions",
         "",
-        "| Date | First Prompt | Keywords | Prompts | Tokens |",
-        "|------|-------------|----------|---------|--------|",
+        "| Date | First Prompt | Keywords | Prompts | Tokens | Branches |",
+        "|------|-------------|----------|---------|--------|----------|",
     ]
 
     for e in all_entries:
         fp = e["first_prompt"][:80].replace("|", "/")
         kw = ", ".join(e["keywords"][:6])
         tokens = f"{e['total_tokens']:,}" if e.get("total_tokens") else "?"
-        lines.append(f"| {e['date']} | {fp} | {kw} | {e['prompt_count']} | {tokens} |")
+        bc = e.get("branch_count", 0)
+        branches_col = str(bc) if bc else "-"
+        lines.append(f"| {e['date']} | {fp} | {kw} | {e['prompt_count']} | {tokens} | {branches_col} |")
 
     lines.append("")
     lines.append("> Use `/recall <term>` to search sessions by keyword or prompt content.")

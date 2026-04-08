@@ -24,9 +24,9 @@ Fires after editing vault notes in high-risk directories (people, projects, rule
 
 **Placeholder:** `{{VAULT_PATH}}`
 
-### guard-pessoas.sh (PreToolUse)
+### guard-people.sh (PreToolUse)
 
-Guards the `70-Pessoas/` directory against data fabrication. When the agent writes or edits a person's note, this hook injects a reminder to trace every fact to a primary source (chat messages, meeting transcripts, LinkedIn, user statements). If a fact cannot be sourced, it should be marked "unconfirmed" or left blank.
+Guards the `70-People/` directory against data fabrication. When the agent writes or edits a person's note, this hook injects a reminder to trace every fact to a primary source (chat messages, meeting transcripts, LinkedIn, user statements). If a fact cannot be sourced, it should be marked "unconfirmed" or left blank.
 
 Non-blocking: injects a warning but does not prevent the write.
 
@@ -47,7 +47,7 @@ Fires before context compaction. Reminds the agent to check for unsaved learning
   "hooks": {
     "PreToolUse": [
       { "matcher": "Write|Edit", "command": ".claude/hooks/memory-injection-scan.sh" },
-      { "matcher": "Write|Edit", "command": ".claude/hooks/guard-pessoas.sh" }
+      { "matcher": "Write|Edit", "command": ".claude/hooks/guard-people.sh" }
     ],
     "PostToolUse": [
       { "matcher": "Edit", "command": ".claude/hooks/cascade-check.sh" }
@@ -62,5 +62,5 @@ Fires before context compaction. Reminds the agent to check for unsaved learning
 ## Dependencies
 
 - `python3` (for JSON parsing and unicode detection)
-- `jq` (for JSON parsing in cascade-check.sh and guard-pessoas.sh)
+- `jq` (for JSON parsing in cascade-check.sh and guard-people.sh)
 - Standard Unix tools: `grep`, `basename`

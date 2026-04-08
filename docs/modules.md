@@ -48,7 +48,7 @@ Covers: MicroCompact scope awareness, post-compact file restoration, prompt cach
 
 - `memory-injection-scan.sh`: Blocks prompt injection patterns in memory files
 - `cascade-check.sh`: Reminds about cross-reference updates after editing facts
-- `guard-pessoas.sh`: Guards against fabricating data about people
+- `guard-people.sh`: Guards against fabricating data about people
 - `memory-nudge.sh`: Reminds to persist learnings before context compaction
 
 ## Vault Management
@@ -99,7 +99,7 @@ Includes: boot-protocol rules, prefetch-context hook, and dashboard templates (c
 | `/contrarian` | Anti-sycophancy weekly analysis |
 | `/audit-gaps` | Detect missing people, projects, tasks |
 | `/post-meeting` | Process meeting transcripts |
-| `/pessoa` | Full briefing on a person |
+| `/person` | Full briefing on a person |
 | `/doc-release` | Update docs after code changes |
 | `/ship` | Release pipeline (test, review, commit, PR) |
 

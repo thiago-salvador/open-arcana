@@ -1,61 +1,61 @@
 ---
-title: "ConflictReport: <titulo>"
-summary: "Divergencia entre sessoes/agentes sobre <tema>"
+title: "ConflictReport: <title>"
+summary: "Divergence between sessions/agents about <topic>"
 type: decision
-domain: <dominio>
+domain: <domain>
 tags: [conflict-report, anti-sycophancy]
 status: active
 created: <% tp.date.now("YYYY-MM-DD") %>
 ---
 
-# ConflictReport: <titulo>
+# ConflictReport: <title>
 
-> [!warning] Divergencia detectada
-> Este documento registra uma divergencia entre sessoes ou agentes. Nao foi resolvida por "quem falou por ultimo ganha", mas por evidencia.
+> [!warning] Divergence detected
+> This document records a divergence between sessions or agents. It was not resolved by "last speaker wins", but by evidence.
 
-## Contexto
+## Context
 
-**Data da divergencia:** YYYY-MM-DD
-**Sessao/agente A:** (quem afirmou primeiro)
-**Sessao/agente B:** (quem divergiu)
-**Dominio:** zaaz | mode | content | research | personal
+**Date of divergence:** YYYY-MM-DD
+**Session/agent A:** (who claimed first)
+**Session/agent B:** (who diverged)
+**Domain:** work | studio | content | research | personal
 
-## Posicoes
+## Positions
 
-### Posicao A (original)
-- **Afirmacao:**
-- **Fonte:**
+### Position A (original)
+- **Claim:**
+- **Source:**
 - **Confidence:** high | medium | low
-- **Quando:** YYYY-MM-DD
+- **When:** YYYY-MM-DD
 
-### Posicao B (divergente)
-- **Afirmacao:**
-- **Fonte:**
+### Position B (divergent)
+- **Claim:**
+- **Source:**
 - **Confidence:** high | medium | low
-- **Quando:** YYYY-MM-DD
+- **When:** YYYY-MM-DD
 
-## Evidencia
+## Evidence
 
-| Fonte verificada | Suporta A ou B? | Notas |
-|-----------------|----------------|-------|
+| Verified source | Supports A or B? | Notes |
+|----------------|-------------------|-------|
 | | | |
 
-## Resolucao
+## Resolution
 
-- **Vencedor:** A | B | Nenhum (ambos parcialmente corretos) | Escalado ao usuario
-- **Justificativa:**
-- **Acoes tomadas:**
-  - [ ] Nota original atualizada
-  - [ ] Memory file atualizado/removido
-  - [ ] Daily Note logada
-  - [ ] Cascade check (grep pelo valor antigo)
+- **Winner:** A | B | Neither (both partially correct) | Escalated to user
+- **Justification:**
+- **Actions taken:**
+  - [ ] Original note updated
+  - [ ] Memory file updated/removed
+  - [ ] Daily Note logged
+  - [ ] Cascade check (grep for old value)
 
-## Impacto
+## Impact
 
-- **O que muda com essa correcao:**
-- **Quem/o que e afetado:**
+- **What changes with this correction:**
+- **Who/what is affected:**
 
-## Licoes
+## Lessons
 
-- **Por que a divergencia aconteceu:**
-- **Como prevenir no futuro:**
+- **Why the divergence happened:**
+- **How to prevent in the future:**

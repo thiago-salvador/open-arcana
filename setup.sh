@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Open Arcana Setup Wizard
 # Compatible with bash 3.2+ (macOS default)
-VERSION="1.0.5"
+VERSION="1.0.6"
 
 # ── Colors & Styles ───────────────────────────────────────
 BOLD=$'\033[1m'
@@ -40,7 +40,7 @@ MODULE_NAMES=(
   "Security Hooks"
   "Vault Structure + Templates"
   "Retrieval System (Engram)"
-  "Slash Commands (18 commands)"
+  "Slash Commands (22 commands)"
   "Connected Sources Config"
   "Scheduled Tasks"
   "Vault Health Checks"
@@ -550,7 +550,555 @@ YAML
     fi
   done
 
+  # Include installed community packages
+  local pkg_base="$VAULT_PATH/.claude/packages"
+  if [[ -d "$pkg_base" ]] && [[ -n "$(ls -A "$pkg_base" 2>/dev/null)" ]]; then
+    echo "" >> "$config_path"
+    echo "packages:" >> "$config_path"
+    for pkg_dir in "$pkg_base"/*/; do
+      [[ -d "$pkg_dir" ]] || continue
+      local manifest="$pkg_dir/package.yaml"
+      [[ -f "$manifest" ]] || continue
+      local p_name p_version
+      p_name=$(grep "^name:" "$manifest" 2>/dev/null | sed 's/^name:[[:space:]]*//' | sed 's/^"//;s/"$//')
+      p_version=$(grep "^version:" "$manifest" 2>/dev/null | sed 's/^version:[[:space:]]*//' | sed 's/^"//;s/"$//')
+      if [[ -n "$p_name" ]] && [[ -n "$p_version" ]]; then
+        echo "  ${p_name}: \"${p_version}\"" >> "$config_path"
+      fi
+    done
+  fi
+
   success "Generating arcana.config.yaml"
+}
+
+# ── Package management ──────────────────────────────────
+
+# Simple semver compare: returns 0 if $1 >= $2
+version_gte() {
+  local v1="$1" v2="$2"
+  local IFS='.'
+  local -a a1 a2
+  # shellcheck disable=SC2206
+  a1=($v1)
+  # shellcheck disable=SC2206
+  a2=($v2)
+  local i
+  for i in 0 1 2; do
+    local n1=${a1[$i]:-0}
+    local n2=${a2[$i]:-0}
+    if [[ $n1 -gt $n2 ]]; then return 0; fi
+    if [[ $n1 -lt $n2 ]]; then return 1; fi
+  done
+  return 0
+}
+
+# Extract major version number
+version_major() {
+  echo "$1" | cut -d. -f1
+}
+
+# Check version constraint: returns 0 if $VERSION satisfies $constraint
+check_version_constraint() {
+  local constraint="$1"
+  if [[ -z "$constraint" ]]; then return 0; fi
+
+  if [[ "$constraint" == ">="* ]]; then
+    local min="${constraint#>=}"
+    version_gte "$VERSION" "$min"
+    return $?
+  elif [[ "$constraint" == "~="* ]]; then
+    local compat="${constraint#~=}"
+    local compat_major
+    compat_major=$(version_major "$compat")
+    local cur_major
+    cur_major=$(version_major "$VERSION")
+    if [[ "$cur_major" != "$compat_major" ]]; then return 1; fi
+    # Pad compat to full semver for gte check
+    local compat_full="$compat"
+    case "$compat" in
+      *.*.*) ;;
+      *.*) compat_full="${compat}.0" ;;
+      *) compat_full="${compat}.0.0" ;;
+    esac
+    version_gte "$VERSION" "$compat_full"
+    return $?
+  else
+    # Exact match
+    if [[ "$VERSION" == "$constraint" ]]; then return 0; else return 1; fi
+  fi
+}
+
+# Read a top-level value from a YAML file (simple grep-based)
+pkg_yaml_val() {
+  local file="$1" key="$2"
+  grep "^${key}:" "$file" 2>/dev/null | sed "s/^${key}:[[:space:]]*//" | sed 's/^"//;s/"$//'
+}
+
+# Read a nested (2-space indent) value from a YAML file
+pkg_yaml_nested() {
+  local file="$1" key="$2"
+  grep "^  ${key}:" "$file" 2>/dev/null | sed "s/^  ${key}:[[:space:]]*//" | sed 's/^"//;s/"$//'
+}
+
+# Read a YAML list under a given key (returns items one per line, stripped of "- ")
+pkg_yaml_list() {
+  local file="$1" key="$2"
+  sed -n "/^  ${key}:/,/^  [^ ]/p" "$file" 2>/dev/null | grep '^    - ' 2>/dev/null | sed 's/^    - //' | sed 's/^"//;s/"$//' || true
+}
+
+install_package() {
+  local source="$1"
+  local tmp_clone=""
+  local pkg_dir=""
+
+  # Determine if source is a git URL or local path
+  if [[ "$source" == http://* ]] || [[ "$source" == https://* ]] || [[ "$source" == git@* ]] || [[ "$source" == *.git ]]; then
+    tmp_clone=$(mktemp -d)
+    echo -e "  ${DIM}Cloning ${source}...${RESET}"
+    if ! git clone --depth 1 "$source" "$tmp_clone/pkg" 2>/dev/null; then
+      error "Failed to clone: $source"
+      rm -rf "$tmp_clone"
+      exit 1
+    fi
+    pkg_dir="$tmp_clone/pkg"
+  else
+    # Local path
+    source="${source/#\~/$HOME}"
+    if [[ ! -d "$source" ]]; then
+      error "Directory not found: $source"
+      exit 1
+    fi
+    pkg_dir="$source"
+  fi
+
+  # Validate manifest exists
+  local manifest="$pkg_dir/arcana-package.yaml"
+  if [[ ! -f "$manifest" ]]; then
+    error "No arcana-package.yaml found in: $pkg_dir"
+    if [[ -n "$tmp_clone" ]]; then rm -rf "$tmp_clone"; fi
+    exit 1
+  fi
+
+  # Read manifest
+  local pkg_name pkg_version pkg_desc pkg_author
+  pkg_name=$(pkg_yaml_val "$manifest" "name")
+  pkg_version=$(pkg_yaml_val "$manifest" "version")
+  pkg_desc=$(pkg_yaml_val "$manifest" "description")
+  pkg_author=$(pkg_yaml_val "$manifest" "author")
+
+  if [[ -z "$pkg_name" ]] || [[ -z "$pkg_version" ]] || [[ -z "$pkg_desc" ]] || [[ -z "$pkg_author" ]]; then
+    error "Manifest missing required fields (name, version, description, author)"
+    if [[ -n "$tmp_clone" ]]; then rm -rf "$tmp_clone"; fi
+    exit 1
+  fi
+
+  echo -e "  ${MAGENTA}◈${RESET} ${BOLD}Installing package: ${pkg_name}${RESET} v${pkg_version}"
+  echo -e "    ${DIM}${pkg_desc}${RESET}"
+  echo ""
+
+  # Check version constraint
+  local version_req
+  version_req=$(pkg_yaml_nested "$manifest" "open-arcana")
+  if [[ -n "$version_req" ]]; then
+    if ! check_version_constraint "$version_req"; then
+      error "Package requires Open Arcana ${version_req}, but you have v${VERSION}"
+      if [[ -n "$tmp_clone" ]]; then rm -rf "$tmp_clone"; fi
+      exit 1
+    fi
+  fi
+
+  # Check module dependencies
+  local required_modules
+  required_modules=$(pkg_yaml_list "$manifest" "modules")
+  if [[ -n "$required_modules" ]]; then
+    local config_file="$VAULT_PATH/.claude/arcana.config.yaml"
+    if [[ -f "$config_file" ]]; then
+      while IFS= read -r req_mod; do
+        [[ -z "$req_mod" ]] && continue
+        local mod_status
+        mod_status=$(pkg_yaml_nested "$config_file" "$req_mod")
+        if [[ "$mod_status" != "true" ]]; then
+          error "Package requires module '${req_mod}' which is not active"
+          if [[ -n "$tmp_clone" ]]; then rm -rf "$tmp_clone"; fi
+          exit 1
+        fi
+      done <<< "$required_modules"
+    fi
+  fi
+
+  # Detect vault path from existing config if not set
+  if [[ -z "${VAULT_PATH:-}" ]]; then
+    local config_file="$HOME/Documents/Obsidian/Personal/.claude/arcana.config.yaml"
+    if [[ -f "$config_file" ]]; then
+      VAULT_PATH=$(pkg_yaml_nested "$config_file" "vault_path")
+    fi
+  fi
+
+  if [[ -z "${VAULT_PATH:-}" ]]; then
+    # Try to find existing config
+    local found_config
+    found_config=$(find "$HOME" -maxdepth 6 -name "arcana.config.yaml" -path "*/.claude/*" 2>/dev/null | head -1)
+    if [[ -n "$found_config" ]]; then
+      VAULT_PATH=$(pkg_yaml_nested "$found_config" "vault_path")
+    fi
+  fi
+
+  if [[ -z "${VAULT_PATH:-}" ]]; then
+    error "Cannot determine vault path. Run ./setup.sh first or set VAULT_PATH."
+    if [[ -n "$tmp_clone" ]]; then rm -rf "$tmp_clone"; fi
+    exit 1
+  fi
+
+  # Load config values for template processing (if not already loaded)
+  if [[ -z "${USER_NAME:-}" ]]; then
+    local config_file="$VAULT_PATH/.claude/arcana.config.yaml"
+    if [[ -f "$config_file" ]]; then
+      USER_NAME=$(pkg_yaml_nested "$config_file" "name")
+      USER_ROLE=$(pkg_yaml_nested "$config_file" "role")
+      USER_LANG=$(pkg_yaml_nested "$config_file" "language")
+      COMPANY=$(pkg_yaml_nested "$config_file" "company")
+      PRIMARY_DOMAIN=$(pkg_yaml_nested "$config_file" "primary_domain")
+      DOMAINS=$(pkg_yaml_nested "$config_file" "domains")
+      NOTION_DB_ID=$(pkg_yaml_nested "$config_file" "notion_db_id")
+      USER_EMAIL=$(pkg_yaml_nested "$config_file" "user_email")
+      MEMORY_DIR=$(derive_memory_dir "$VAULT_PATH")
+    fi
+  fi
+
+  # Provide safe defaults for template vars that might be empty
+  USER_NAME="${USER_NAME:-}"
+  USER_ROLE="${USER_ROLE:-}"
+  USER_LANG="${USER_LANG:-en}"
+  VAULT_PATH="${VAULT_PATH:-}"
+  MEMORY_DIR="${MEMORY_DIR:-}"
+  NOTION_DB_ID="${NOTION_DB_ID:-}"
+  USER_EMAIL="${USER_EMAIL:-}"
+  PRIMARY_DOMAIN="${PRIMARY_DOMAIN:-work}"
+  COMPANY="${COMPANY:-}"
+  DOMAINS="${DOMAINS:-work,personal}"
+
+  local target="$VAULT_PATH/.claude"
+  local pkg_files_installed=0
+
+  # Install rules
+  if [[ -d "$pkg_dir/rules" ]]; then
+    mkdir -p "$target/rules"
+    for rule in "$pkg_dir"/rules/*.md; do
+      [[ -f "$rule" ]] || continue
+      local fname
+      fname=$(basename "$rule")
+      if [[ -f "$target/rules/$fname" ]]; then
+        echo -e "    ${YELLOW}Overwriting existing rule: ${fname}${RESET}"
+      fi
+      copy_file "$rule" "$target/rules/$fname"
+      pkg_files_installed=$((pkg_files_installed + 1))
+    done
+    success "Installed rules"
+  fi
+
+  # Install hooks
+  if [[ -d "$pkg_dir/hooks" ]]; then
+    mkdir -p "$target/hooks"
+    for hook in "$pkg_dir"/hooks/*.sh; do
+      [[ -f "$hook" ]] || continue
+      local fname
+      fname=$(basename "$hook")
+      if [[ -f "$target/hooks/$fname" ]]; then
+        echo -e "    ${YELLOW}Overwriting existing hook: ${fname}${RESET}"
+      fi
+      process_template "$hook" "$target/hooks/$fname"
+      chmod +x "$target/hooks/$fname"
+      pkg_files_installed=$((pkg_files_installed + 1))
+    done
+    success "Installed hooks"
+  fi
+
+  # Install commands
+  if [[ -d "$pkg_dir/commands" ]]; then
+    mkdir -p "$target/commands"
+    for cmd in "$pkg_dir"/commands/*.md; do
+      [[ -f "$cmd" ]] || continue
+      local fname
+      fname=$(basename "$cmd")
+      if [[ -f "$target/commands/$fname" ]]; then
+        echo -e "    ${YELLOW}Overwriting existing command: ${fname}${RESET}"
+      fi
+      process_template "$cmd" "$target/commands/$fname"
+      pkg_files_installed=$((pkg_files_installed + 1))
+    done
+    success "Installed commands"
+  fi
+
+  # Install templates
+  if [[ -d "$pkg_dir/templates" ]]; then
+    mkdir -p "$VAULT_PATH/80-Templates"
+    for tmpl in "$pkg_dir"/templates/*.md; do
+      [[ -f "$tmpl" ]] || continue
+      local fname
+      fname=$(basename "$tmpl")
+      if [[ -f "$VAULT_PATH/80-Templates/$fname" ]]; then
+        echo -e "    ${YELLOW}Overwriting existing template: ${fname}${RESET}"
+      fi
+      copy_file "$tmpl" "$VAULT_PATH/80-Templates/$fname"
+      pkg_files_installed=$((pkg_files_installed + 1))
+    done
+    success "Installed templates"
+  fi
+
+  # Install tools
+  if [[ -d "$pkg_dir/tools" ]]; then
+    mkdir -p "$target/tools"
+    for tool in "$pkg_dir"/tools/*; do
+      [[ -f "$tool" ]] || continue
+      local fname
+      fname=$(basename "$tool")
+      if [[ -f "$target/tools/$fname" ]]; then
+        echo -e "    ${YELLOW}Overwriting existing tool: ${fname}${RESET}"
+      fi
+      copy_file "$tool" "$target/tools/$fname"
+      chmod +x "$target/tools/$fname"
+      pkg_files_installed=$((pkg_files_installed + 1))
+    done
+    success "Installed tools"
+  fi
+
+  # Record installation
+  local pkg_registry="$target/packages/$pkg_name"
+  mkdir -p "$pkg_registry"
+  cp "$manifest" "$pkg_registry/package.yaml"
+  echo "installed: \"$(date +%Y-%m-%d)\"" >> "$pkg_registry/package.yaml"
+
+  # Update arcana.config.yaml packages section
+  local config_file="$VAULT_PATH/.claude/arcana.config.yaml"
+  if [[ -f "$config_file" ]]; then
+    if grep -q "^packages:" "$config_file"; then
+      # Check if this package is already listed
+      if grep -q "^  ${pkg_name}:" "$config_file"; then
+        sed -i.bak "s/^  ${pkg_name}:.*$/  ${pkg_name}: \"${pkg_version}\"/" "$config_file"
+        rm -f "${config_file}.bak"
+      else
+        sed -i.bak "/^packages:/a\\
+  ${pkg_name}: \"${pkg_version}\"" "$config_file"
+        rm -f "${config_file}.bak"
+      fi
+    else
+      printf '\npackages:\n  %s: "%s"\n' "$pkg_name" "$pkg_version" >> "$config_file"
+    fi
+  fi
+
+  echo ""
+  success "Package ${BOLD}${pkg_name}${RESET} v${pkg_version} installed (${pkg_files_installed} files)"
+
+  # Cleanup temp clone
+  if [[ -n "$tmp_clone" ]]; then rm -rf "$tmp_clone"; fi
+}
+
+uninstall_package() {
+  local pkg_name="$1"
+
+  # Find vault path from existing config
+  if [[ -z "${VAULT_PATH:-}" ]]; then
+    local found_config
+    for candidate in \
+      "$HOME/Documents/Obsidian/Personal/.claude/arcana.config.yaml" \
+      "$HOME/obsidian/.claude/arcana.config.yaml"; do
+      if [[ -f "$candidate" ]]; then
+        found_config="$candidate"
+        break
+      fi
+    done
+    if [[ -z "${found_config:-}" ]]; then
+      found_config=$(find "$HOME" -maxdepth 6 -name "arcana.config.yaml" -path "*/.claude/*" 2>/dev/null | head -1)
+    fi
+    if [[ -n "${found_config:-}" ]]; then
+      VAULT_PATH=$(pkg_yaml_nested "$found_config" "vault_path")
+    fi
+  fi
+
+  if [[ -z "${VAULT_PATH:-}" ]]; then
+    error "Cannot determine vault path. Run ./setup.sh first."
+    exit 1
+  fi
+
+  local target="$VAULT_PATH/.claude"
+  local pkg_registry="$target/packages/$pkg_name"
+  local pkg_manifest="$pkg_registry/package.yaml"
+
+  if [[ ! -f "$pkg_manifest" ]]; then
+    error "Package not found: ${pkg_name}"
+    error "No installation record at: ${pkg_registry}"
+    exit 1
+  fi
+
+  local pkg_version
+  pkg_version=$(pkg_yaml_val "$pkg_manifest" "version")
+
+  echo ""
+  echo -e "  ${MAGENTA}◈${RESET} ${BOLD}Uninstalling package: ${pkg_name}${RESET} v${pkg_version}"
+  echo ""
+
+  local removed=0
+
+  # Read manifest provides lists and remove installed files
+  # For rules: check rules/ listing
+  local rule_files
+  rule_files=$(pkg_yaml_list "$pkg_manifest" "rules")
+  if [[ -n "$rule_files" ]]; then
+    while IFS= read -r fname; do
+      [[ -z "$fname" ]] && continue
+      if [[ -f "$target/rules/$fname" ]]; then
+        rm -f "$target/rules/$fname"
+        removed=$((removed + 1))
+      fi
+    done <<< "$rule_files"
+  fi
+
+  # For hooks
+  local hook_files
+  hook_files=$(pkg_yaml_list "$pkg_manifest" "hooks")
+  if [[ -n "$hook_files" ]]; then
+    while IFS= read -r fname; do
+      [[ -z "$fname" ]] && continue
+      if [[ -f "$target/hooks/$fname" ]]; then
+        rm -f "$target/hooks/$fname"
+        removed=$((removed + 1))
+      fi
+    done <<< "$hook_files"
+  fi
+
+  # For commands
+  local cmd_files
+  cmd_files=$(pkg_yaml_list "$pkg_manifest" "commands")
+  if [[ -n "$cmd_files" ]]; then
+    while IFS= read -r fname; do
+      [[ -z "$fname" ]] && continue
+      if [[ -f "$target/commands/$fname" ]]; then
+        rm -f "$target/commands/$fname"
+        removed=$((removed + 1))
+      fi
+    done <<< "$cmd_files"
+  fi
+
+  # For templates
+  local tmpl_files
+  tmpl_files=$(pkg_yaml_list "$pkg_manifest" "templates")
+  if [[ -n "$tmpl_files" ]]; then
+    while IFS= read -r fname; do
+      [[ -z "$fname" ]] && continue
+      if [[ -f "$VAULT_PATH/80-Templates/$fname" ]]; then
+        rm -f "$VAULT_PATH/80-Templates/$fname"
+        removed=$((removed + 1))
+      fi
+    done <<< "$tmpl_files"
+  fi
+
+  # For tools
+  local tool_files
+  tool_files=$(pkg_yaml_list "$pkg_manifest" "tools")
+  if [[ -n "$tool_files" ]]; then
+    while IFS= read -r fname; do
+      [[ -z "$fname" ]] && continue
+      if [[ -f "$target/tools/$fname" ]]; then
+        rm -f "$target/tools/$fname"
+        removed=$((removed + 1))
+      fi
+    done <<< "$tool_files"
+  fi
+
+  # If provides lists were empty, scan directories from the package name prefix
+  # as a fallback. This handles the case where provides lists are empty but files exist.
+  if [[ $removed -eq 0 ]]; then
+    # Try to remove files that match common patterns
+    for dir in rules hooks commands tools; do
+      for f in "$target/$dir"/*; do
+        [[ -f "$f" ]] || continue
+        # We can't know which files came from this package without tracking,
+        # so we only remove files explicitly listed in provides.
+      done
+    done
+  fi
+
+  # Remove package registry
+  rm -rf "$pkg_registry"
+
+  # Update arcana.config.yaml
+  local config_file="$VAULT_PATH/.claude/arcana.config.yaml"
+  if [[ -f "$config_file" ]]; then
+    sed -i.bak "/^  ${pkg_name}:/d" "$config_file"
+    rm -f "${config_file}.bak"
+    # If packages section is now empty, remove it
+    local remaining_pkgs
+    remaining_pkgs=$(sed -n '/^packages:/,/^[^ ]/p' "$config_file" 2>/dev/null | grep '^  ' 2>/dev/null || true)
+    if [[ -z "$remaining_pkgs" ]]; then
+      sed -i.bak '/^packages:$/d' "$config_file"
+      rm -f "${config_file}.bak"
+    fi
+  fi
+
+  success "Package ${BOLD}${pkg_name}${RESET} uninstalled (${removed} files removed)"
+  echo ""
+}
+
+list_packages() {
+  # Find vault path from existing config
+  if [[ -z "${VAULT_PATH:-}" ]]; then
+    local found_config
+    for candidate in \
+      "$HOME/Documents/Obsidian/Personal/.claude/arcana.config.yaml" \
+      "$HOME/obsidian/.claude/arcana.config.yaml"; do
+      if [[ -f "$candidate" ]]; then
+        found_config="$candidate"
+        break
+      fi
+    done
+    if [[ -z "${found_config:-}" ]]; then
+      found_config=$(find "$HOME" -maxdepth 6 -name "arcana.config.yaml" -path "*/.claude/*" 2>/dev/null | head -1)
+    fi
+    if [[ -n "${found_config:-}" ]]; then
+      VAULT_PATH=$(pkg_yaml_nested "$found_config" "vault_path")
+    fi
+  fi
+
+  if [[ -z "${VAULT_PATH:-}" ]]; then
+    error "Cannot determine vault path. Run ./setup.sh first."
+    exit 1
+  fi
+
+  local pkg_base="$VAULT_PATH/.claude/packages"
+  if [[ ! -d "$pkg_base" ]] || [[ -z "$(ls -A "$pkg_base" 2>/dev/null)" ]]; then
+    echo ""
+    echo -e "  ${DIM}No community packages installed.${RESET}"
+    echo ""
+    exit 0
+  fi
+
+  echo ""
+  echo -e "${BOLD}Installed Packages${RESET}"
+  echo ""
+
+  local count=0
+  for pkg_dir in "$pkg_base"/*/; do
+    [[ -d "$pkg_dir" ]] || continue
+    local manifest="$pkg_dir/package.yaml"
+    [[ -f "$manifest" ]] || continue
+
+    local p_name p_version p_desc p_installed
+    p_name=$(pkg_yaml_val "$manifest" "name")
+    p_version=$(pkg_yaml_val "$manifest" "version")
+    p_desc=$(pkg_yaml_val "$manifest" "description")
+    p_installed=$(pkg_yaml_val "$manifest" "installed")
+
+    echo -e "  ${MAGENTA}◈${RESET} ${BOLD}${p_name}${RESET} v${p_version}"
+    echo -e "    ${DIM}${p_desc}${RESET}"
+    if [[ -n "$p_installed" ]]; then
+      echo -e "    ${DIM}Installed: ${p_installed}${RESET}"
+    fi
+    echo ""
+    count=$((count + 1))
+  done
+
+  echo -e "  ${DIM}${count} package(s) installed.${RESET}"
+  echo ""
 }
 
 # ── Portal Reveal Summary ────────────────────────────────
@@ -709,6 +1257,9 @@ DRY_RUN=false
 AUTO_YES=false
 LIST_MODULES=false
 UPDATE_MODE=false
+INSTALL_PKG=""
+UNINSTALL_PKG=""
+LIST_PKGS=false
 
 # ── Read existing config for --update ──────────────────────
 
@@ -755,6 +1306,12 @@ while [[ $# -gt 0 ]]; do
     --yes|-y)  AUTO_YES=true; shift ;;
     --list)    LIST_MODULES=true; shift ;;
     --update)  UPDATE_MODE=true; shift ;;
+    --install-package)
+      INSTALL_PKG="$2"; shift 2 ;;
+    --uninstall-package)
+      UNINSTALL_PKG="$2"; shift 2 ;;
+    --list-packages)
+      LIST_PKGS=true; shift ;;
     --help|-h)
       echo ""
       echo -e "${BOLD}Open Arcana Setup${RESET} v${VERSION}"
@@ -762,12 +1319,15 @@ while [[ $# -gt 0 ]]; do
       echo "  Usage: ./setup.sh [options]"
       echo ""
       echo "  Options:"
-      echo "    --preset <name>    Use preset (minimal, writer, full)"
-      echo "    --yes, -y          Accept all defaults"
-      echo "    --dry-run          Show what would be installed"
-      echo "    --list             Show available modules"
-      echo "    --update           Update existing installation (skip wizard)"
-      echo "    --help, -h         Show this help"
+      echo "    --preset <name>              Use preset (minimal, writer, full)"
+      echo "    --yes, -y                    Accept all defaults"
+      echo "    --dry-run                    Show what would be installed"
+      echo "    --list                       Show available modules"
+      echo "    --update                     Update existing installation (skip wizard)"
+      echo "    --install-package <source>   Install a community package (git URL or local path)"
+      echo "    --uninstall-package <name>   Uninstall a community package"
+      echo "    --list-packages              List installed community packages"
+      echo "    --help, -h                   Show this help"
       echo ""
       exit 0
       ;;
@@ -785,6 +1345,23 @@ if $LIST_MODULES; then
     echo -e "  ${MAGENTA}◈${RESET} ${BOLD}${MODULE_KEYS[$idx]}${RESET}: ${MODULE_NAMES[$idx]}"
   done
   echo ""
+  exit 0
+fi
+
+# ── Package operations ──────────────────────────────────
+
+if [[ -n "$INSTALL_PKG" ]]; then
+  install_package "$INSTALL_PKG"
+  exit 0
+fi
+
+if [[ -n "$UNINSTALL_PKG" ]]; then
+  uninstall_package "$UNINSTALL_PKG"
+  exit 0
+fi
+
+if $LIST_PKGS; then
+  list_packages
   exit 0
 fi
 

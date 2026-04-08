@@ -17,9 +17,9 @@ if [[ "$FILE_PATH" == "$VAULT"/* && "$FILE_PATH" == *.md && \
 
   NOTE=$(basename "$FILE_PATH" .md)
   # Check if this is a high-risk file (person, project, rule)
-  if [[ "$FILE_PATH" == *"70-Pessoas/"* || \
+  if [[ "$FILE_PATH" == *"70-People/"* || \
         "$FILE_PATH" == *"10-"* || \
-        "$FILE_PATH" == *"15-Projetos/"* || \
+        "$FILE_PATH" == *"15-Projects/"* || \
         "$FILE_PATH" == *"85-Rules/"* ]]; then
     echo "{\"hookSpecificOutput\":{\"additionalContext\":\"CASCADE CHECK: You just edited '${NOTE}'. If you changed a FACT (role, status, name, location): (1) grep vault for the old value (2) Check: concept-index, aliases, domain rules, memory files (3) Update ALL locations. Fact changes in one file without updating references cause inconsistencies that compound over time.\"}}"
   fi

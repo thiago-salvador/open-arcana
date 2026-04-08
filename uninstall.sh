@@ -195,7 +195,7 @@ ARCANA_RULES=(
   boot-protocol.md
   connected-sources.md
   domain-example.md
-  pessoas.md
+  people.md
   content.md
 )
 
@@ -216,7 +216,7 @@ ARCANA_HOOKS=(
   stop-check-dn.sh
   memory-injection-scan.sh
   cascade-check.sh
-  guard-pessoas.sh
+  guard-people.sh
   memory-nudge.sh
   prefetch-context.sh
 )

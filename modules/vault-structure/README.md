@@ -35,7 +35,7 @@ All templates use Obsidian Templater syntax (`<% tp.* %>`). They contain no pers
 
 | File | Scope | Purpose |
 |------|-------|---------|
-| `pessoas.md` | `70-People/**` | Rules for person notes: required fields, update protocol, relationship decay alerts |
+| `people.md` | `70-People/**` | Rules for person notes: required fields, update protocol, relationship decay alerts |
 | `content.md` | `30-Content/**` | Editorial identity framework: voice spectrum, tone matrix, platform guidelines |
 | `domain-example.md` | `10-Work/**` | Example of domain-specific rules (team roster, status, data sources). Copy and customize. |
 

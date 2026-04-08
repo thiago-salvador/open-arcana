@@ -16,7 +16,7 @@ Built from a production system running 16 hooks, 27 commands, and 500+ automated
 | **Security Hooks** | Blocks prompt injection in memory files, guards against fabricated people data. |
 | **Vault Structure** | Opinionated folder system with 18 note templates. One command creates the full tree. |
 | **Retrieval System** | 4-layer lookup inspired by DeepSeek's Engram paper. Concept index, filtered grep, semantic search, fallback. |
-| **Slash Commands** | 21 commands: /start, /end, /weekly, /health, /dump, /capture, /distill, /recall, /model-review, and more. |
+| **Slash Commands** | 22 commands: /start, /end, /weekly, /health, /dump, /capture, /distill, /recall, /tree, /model-review, and more. |
 | **Connected Sources** | Templates for orchestrating 16+ MCP data sources (Teams, Notion, Calendar, Read.AI, etc). |
 | **Scheduled Tasks** | Patterns for autonomous recurring agents: morning briefing, end-of-day, weekly review. |
 | **Vault Health** | 500+ automated checks for frontmatter, orphans, broken links, and index consistency. |
@@ -53,12 +53,15 @@ Skip the wizard with a preset:
 ### Other flags
 
 ```bash
-./setup.sh --update            # Update existing install (preserves config)
-./setup.sh --dry-run           # Preview what would be installed
-./setup.sh --yes               # Accept all defaults (scripting mode)
-./setup.sh --add <module>      # Add a module to existing install
-./setup.sh --remove <module>   # Remove a module
-./setup.sh --list              # Show installed modules
+./setup.sh --update                    # Update existing install (preserves config)
+./setup.sh --dry-run                   # Preview what would be installed
+./setup.sh --yes                       # Accept all defaults (scripting mode)
+./setup.sh --add <module>              # Add a module to existing install
+./setup.sh --remove <module>           # Remove a module
+./setup.sh --list                      # Show installed modules
+./setup.sh --install-package <source>  # Install a community package
+./setup.sh --uninstall-package <name>  # Uninstall a community package
+./setup.sh --list-packages             # List installed community packages
 ```
 
 ## Auto-update
@@ -116,6 +119,91 @@ Four layers, inspired by DeepSeek's Engram paper on conditional memory lookup:
 
 Budget: max 20% of context window for retrieval, 80% for reasoning.
 
+## Session Branching
+
+Claude Code sessions are stored as JSONL with a tree structure (each message has `uuid` and `parentUuid`). When you steer a conversation, retry, or branch off, the session file records the full tree, not just a linear chat.
+
+Open Arcana detects these branches automatically. The session index (`tools/session_index.py`) builds a tree from each session, counts branch points, and tracks tree depth. The index includes `branch_count`, `max_depth`, and `branch_points` fields for every session.
+
+Use `/tree <keyword>` to visualize any session's decision tree:
+
+```
+## Session Tree: 2026-04-07 (3 branches, depth 12)
+
+◈ "Implement auth system"
+├── ◇ (assistant response)
+│   ├── ◈ "Use Google OAuth"          ← branch point (2 children)
+│   │   └── ◇ (assistant response)
+│   └── ◈ "Use GitHub OAuth"          ← alternative branch
+│       └── ◇ (assistant response)
+└── ◈ "Add rate limiting"
+```
+
+This makes it easy to audit past decisions, revisit abandoned approaches, and understand how a session evolved.
+
+## Steering Messages
+
+Claude Code supports mid-execution steering: you can send messages while the agent is working, without interrupting its current tool call.
+
+**How it works:** press `Shift+Tab` (or `Esc` in some terminals) while the agent is executing to queue a message. The message is delivered after the current tool call completes, letting you course-correct without losing work in progress.
+
+**When to use steering:**
+- The agent is heading in the wrong direction and you want to redirect it
+- You want to add a constraint ("don't modify that file") mid-task
+- You want to provide new context that just became available
+
+**How this interacts with Open Arcana:**
+- Steered messages create branch points in the session tree (visible in `/tree`)
+- The anti-sycophancy protocol applies to steered prompts too: the agent must still validate, not just comply
+- Session titles (via `session-title.sh`) are set from the first prompt, not from steering messages
+
+## Community Packages
+
+Beyond the 10 built-in modules, Open Arcana supports community packages: third-party extensions you can install from git repos or local directories.
+
+### Installing a package
+
+```bash
+# From a git repository
+./setup.sh --install-package https://github.com/author/arcana-git-workflow.git
+
+# From a local directory
+./setup.sh --install-package /path/to/my-package
+```
+
+The installer validates the manifest, checks version compatibility, installs files to the right locations, and records the package in your config.
+
+### Creating a package
+
+A package is any directory (or git repo) with an `arcana-package.yaml` manifest:
+
+```yaml
+name: "git-workflow"
+version: "1.0.0"
+description: "Git conventions and a /git-review command"
+author: "Your Name"
+
+requires:
+  open-arcana: ">=1.0.0"
+
+provides:
+  rules:
+    - git-conventions.md
+  commands:
+    - git-review.md
+```
+
+Packages follow the same directory convention as built-in modules: `rules/`, `hooks/`, `commands/`, `templates/`, `tools/`. Template variables (`{{VAULT_PATH}}`, etc.) work in package files.
+
+### Managing packages
+
+```bash
+./setup.sh --list-packages              # See what's installed
+./setup.sh --uninstall-package my-pkg   # Remove a package and its files
+```
+
+See [docs/packages.md](docs/packages.md) for the full specification, including version constraints, conflict resolution, and publishing guidelines.
+
 ## Requirements
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI or IDE extension)
@@ -135,7 +223,7 @@ Removes all Open Arcana files and restores your original settings.local.json fro
 
 Contributions welcome. Some ideas:
 
-- New modules (git workflow hooks, citation management, spaced repetition)
+- **Community packages** (git workflow, citation management, spaced repetition, journaling). See [docs/packages.md](docs/packages.md) and the [example package](examples/package/).
 - Adapters for other AI tools (Cursor, Windsurf, Copilot)
 - Windows native support (no WSL)
 - Translations for non-English rule sets
