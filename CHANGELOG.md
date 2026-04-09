@@ -2,6 +2,26 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.1.1] - 2026-04-09 -- Project Hygiene
+
+### Added
+- **Project CLAUDE.md**: stack context (Python 3.11+, no frontend), dev workflow commands, and overrides that suppress irrelevant global rules (design-protocol, Notion workflows) during dev sessions
+- `.gitignore` hardening: `Spec.md`, `docs/PRD-*.md`, `__pycache__/`, `*.pyc`, `.claude/`, `.playwright-mcp/`
+
+### Fixed
+- Internal artifacts (PRDs, Specs) were untracked but unprotected by `.gitignore`, one `git add .` away from accidental commit. Now explicitly ignored.
+
+### Meta (not shipped in repo)
+- Removed 2 broken global hooks (`validate-frontmatter.sh`, `memory-nudge.sh`) pointing to nonexistent scripts
+- Wired `validate-write.sh` as PostToolUse hook for vault `.md` files (was on disk but disconnected)
+- Wired `session-title.sh` as UserPromptSubmit hook (auto-names sessions by slash command or domain)
+- Wired `prefetch-context.sh` as PreToolUse hook scoped to vault paths (surfaces concept-index per domain)
+- Scoped `log-nudge.sh` and `index-check.sh` hooks to vault paths only (no longer fire on Python file saves)
+- Archived `session-scan.sh` (replaced by `/scan` skill)
+- Moved `design-protocol.md` from global auto-loaded rules to `~/.claude/references/` (saves ~801 tokens/session on non-frontend projects)
+- Fixed `definition-of-done.md` false claim about `validate-write.sh` auto-enforcement
+- Removed stale `reference_connected_sources.md` pointer from global CLAUDE.md
+
 ## [1.1.0] - 2026-04-08 -- Analytics Dashboard
 
 ### Added
