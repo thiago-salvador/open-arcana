@@ -1,120 +1,309 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arcana Analytics</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-  <style>
-    :root { --bg: #ffffff; --text: #1a1a2e; --card: #f8f9fa; --border: #e2e8f0; --accent: #6366f1; --accent2: #818cf8; --muted: #94a3b8; }
-    .dark { --bg: #0f0f1a; --text: #e2e8f0; --card: #1a1a2e; --border: #2d2d44; --accent: #818cf8; --accent2: #6366f1; --muted: #64748b; }
-    body { font-family: system-ui, -apple-system, sans-serif; transition: background 0.3s, color 0.3s; }
-    .heat-0 { fill: var(--card); } .heat-1 { fill: #c6dbef; } .heat-2 { fill: #9ecae1; }
-    .heat-3 { fill: #6baed6; } .heat-4 { fill: #3182bd; } .heat-5 { fill: #08519c; }
-    .dark .heat-1 { fill: #1e3a5f; } .dark .heat-2 { fill: #2a5f8f; }
-    .dark .heat-3 { fill: #3182bd; } .dark .heat-4 { fill: #4292c6; } .dark .heat-5 { fill: #6baed6; }
-    .tab-active { border-bottom: 2px solid var(--accent); color: var(--accent); }
-    .tab-inactive { border-bottom: 2px solid transparent; color: var(--muted); }
-    .tab-inactive:hover { color: var(--text); }
-    canvas { max-height: 320px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcana Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #111111;
+    --bg-card: #141414;
+    --bg-card-hover: #1a1a1a;
+    --text-primary: #ededed;
+    --text-secondary: #888888;
+    --text-tertiary: #555555;
+    --accent: #0070f3;
+    --accent-dim: #0070f322;
+    --success: #0cce6b;
+    --success-dim: #0cce6b18;
+    --warning: #f5a623;
+    --warning-dim: #f5a62318;
+    --danger: #ee0000;
+    --danger-dim: #ee000018;
+    --border: #222222;
+    --border-light: #2a2a2a;
+  }
+  .light {
+    --bg-primary: #fafafa;
+    --bg-secondary: #f5f5f5;
+    --bg-card: #ffffff;
+    --bg-card-hover: #fafafa;
+    --text-primary: #171717;
+    --text-secondary: #666666;
+    --text-tertiary: #999999;
+    --accent: #0070f3;
+    --accent-dim: #0070f30a;
+    --success: #0cce6b;
+    --success-dim: #0cce6b0a;
+    --warning: #f5a623;
+    --warning-dim: #f5a6230a;
+    --danger: #ee0000;
+    --danger-dim: #ee00000a;
+    --border: #eaeaea;
+    --border-light: #f0f0f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .text-muted { color: var(--text-secondary); }
+  .text-dim { color: var(--text-tertiary); }
+
+  /* Tabs */
+  .tab-bar { border-bottom: 1px solid var(--border); }
+  .tab-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border: none;
+    background: none;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.15s;
+  }
+  .tab-btn:hover { color: var(--text-primary); }
+  .tab-btn.active {
+    color: var(--text-primary);
+  }
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--text-primary);
+    border-radius: 1px;
+  }
+
+  /* KPI */
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; }
+  .kpi-cell { background: var(--bg-card); padding: 20px 16px; }
+  .kpi-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .kpi-label i { width: 14px; height: 14px; opacity: 0.5; }
+  .kpi-value { font-size: 24px; font-weight: 600; letter-spacing: -0.5px; line-height: 1; }
+  .kpi-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 6px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-align: left;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  th:hover { color: var(--text-primary); }
+  td {
+    font-size: 13px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  tbody tr { transition: background 0.1s; }
+  tbody tr:hover { background: var(--bg-card-hover); }
+  .sort-indicator { opacity: 0.3; margin-left: 4px; }
+  th.sorted .sort-indicator { opacity: 1; }
+
+  /* Charts */
+  .chart-container { width: 100%; position: relative; }
+
+  /* Badge */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .badge-green { background: var(--success-dim); color: var(--success); }
+  .badge-yellow { background: var(--warning-dim); color: var(--warning); }
+  .badge-red { background: var(--danger-dim); color: var(--danger); }
+  .badge-blue { background: var(--accent-dim); color: var(--accent); }
+
+  /* Hotspot card */
+  .hotspot { background: var(--bg-secondary); border-radius: 6px; padding: 12px 16px; margin-bottom: 8px; }
+
+  @media (max-width: 768px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+
+<!-- ANALYTICS_DATA_START -->
+<!-- ANALYTICS_DATA_END -->
 </head>
-<body x-data="App()" :class="{ dark: darkMode }" style="background: var(--bg); color: var(--text);">
+<body>
+<div x-data="dashboard()" x-init="init()" class="min-h-screen">
 
   <!-- Header -->
-  <div class="max-w-7xl mx-auto px-4 py-6">
-    <div class="flex items-center justify-between mb-8">
-      <div>
-        <h1 class="text-2xl font-bold" style="color: var(--accent);">Arcana Analytics</h1>
-        <p class="text-sm" style="color: var(--muted);" x-text="data ? 'Generated: ' + new Date(data.generated).toLocaleString() + ' | Range: ' + data.range : 'Loading...'"></p>
+  <header style="border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <i data-lucide="bar-chart-3" style="width: 20px; height: 20px; color: var(--text-primary);"></i>
+        <h1 style="font-size: 15px; font-weight: 600; margin: 0;">Arcana Analytics</h1>
       </div>
-      <button @click="toggleDark()" class="p-2 rounded-lg" style="background: var(--card); border: 1px solid var(--border);">
-        <span x-text="darkMode ? '☀️' : '🌙'"></span>
+      <p style="font-size: 12px; color: var(--text-secondary); margin: 4px 0 0 30px;" x-text="data ? `${data.range} · ${data.total_projects_scanned} projects · ${data.generated?.slice(0,10)}` : ''"></p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button @click="toggleTheme()" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 12px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+        <i :data-lucide="darkMode ? 'sun' : 'moon'" style="width: 13px; height: 13px;"></i>
+        <span x-text="darkMode ? 'Light' : 'Dark'"></span>
+      </button>
+      <button @click="refresh()" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 12px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+        <i data-lucide="refresh-cw" style="width: 13px; height: 13px;"></i>
+        Refresh
       </button>
     </div>
+  </header>
 
-    <!-- Tabs -->
-    <div class="flex gap-6 mb-8 border-b" style="border-color: var(--border);">
-      <template x-for="t in ['overview','sessions','cost','commands','context']">
-        <button @click="switchTab(t)" :class="tab === t ? 'tab-active' : 'tab-inactive'"
-                class="pb-3 text-sm font-medium capitalize cursor-pointer transition-colors" x-text="t"></button>
-      </template>
-    </div>
+  <!-- Loading / Error -->
+  <div x-show="!data && !error" style="display: flex; align-items: center; justify-content: center; height: 60vh;">
+    <p class="text-muted" style="font-size: 13px;">Loading...</p>
+  </div>
+  <div x-show="error" style="display: flex; align-items: center; justify-content: center; height: 60vh; flex-direction: column; gap: 12px;">
+    <i data-lucide="alert-circle" style="width: 32px; height: 32px; color: var(--danger);"></i>
+    <p style="color: var(--danger); font-size: 14px;" x-text="error"></p>
+    <code style="font-size: 12px; color: var(--text-secondary); background: var(--bg-card); padding: 8px 16px; border-radius: 6px;">python3 00-Dashboard/analytics_engine.py</code>
+  </div>
 
-    <!-- Loading / Error state -->
-    <div x-show="!data && !loadError" class="text-center py-20" style="color: var(--muted);">
-      <p>Loading analytics data...</p>
-    </div>
-    <div x-show="loadError" class="text-center py-20">
-      <p class="text-lg font-semibold" style="color: #ef4444;">Could not load data.json</p>
-      <p class="mt-2" style="color: var(--muted);">Run the analytics engine first to generate the data:</p>
-      <pre class="mt-3 inline-block px-4 py-2 rounded-lg text-sm" style="background: var(--card); border: 1px solid var(--border);">SINCE_DAYS=7 python3 analytics_engine.py</pre>
-    </div>
+  <!-- Tabs -->
+  <nav x-show="data" class="tab-bar" style="padding: 0 24px; display: flex; gap: 0;">
+    <template x-for="t in tabs" :key="t.id">
+      <button @click="switchTab(t.id)"
+        :class="tab === t.id ? 'tab-btn active' : 'tab-btn'"
+        style="display: flex; align-items: center; gap: 6px;">
+        <i :data-lucide="t.icon" style="width: 14px; height: 14px;"></i>
+        <span x-text="t.label"></span>
+      </button>
+    </template>
+  </nav>
 
-    <!-- Tab: Overview -->
-    <div x-show="tab === 'overview' && data" x-cloak>
-      <!-- KPI Cards -->
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
-          <div class="text-sm" style="color: var(--muted);">Total Cost</div>
-          <div class="text-3xl font-bold" x-text="'$' + (data.summary.total_cost || 0).toFixed(2)"></div>
-        </div>
-        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
-          <div class="text-sm" style="color: var(--muted);">Sessions</div>
-          <div class="text-3xl font-bold" x-text="data.summary.total_sessions || 0"></div>
-        </div>
-        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
-          <div class="text-sm" style="color: var(--muted);">Avg HIR</div>
-          <div class="text-3xl font-bold" x-text="((data.summary.avg_hir || 0) * 100).toFixed(1) + '%'"></div>
-        </div>
-        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
-          <div class="text-sm" style="color: var(--muted);">Avg Frustration</div>
-          <div class="text-3xl font-bold" x-text="(data.summary.avg_frustration || 0).toFixed(1) + '/10'"></div>
-        </div>
-        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
-          <div class="text-sm" style="color: var(--muted);">Tool Precision</div>
-          <div class="text-3xl font-bold" x-text="((data.summary.avg_tool_precision || 0) * 100).toFixed(1) + '%'"></div>
-        </div>
-      </div>
+  <!-- Content -->
+  <main x-show="data" style="padding: 24px; max-width: 1200px; margin: 0 auto;">
 
-      <!-- Daily Trend Chart -->
-      <div class="rounded-xl p-6 mb-8" style="background: var(--card); border: 1px solid var(--border);">
-        <h3 class="text-lg font-semibold mb-4">Daily Trend</h3>
-        <canvas id="dailyTrendChart"></canvas>
+    <!-- Tab 1: Overview -->
+    <div x-show="tab === 'overview'">
+      <!-- KPI Grid -->
+      <div class="kpi-grid" style="margin-bottom: 24px;">
+        <div class="kpi-cell">
+          <div class="kpi-label"><i data-lucide="dollar-sign"></i> Total Cost</div>
+          <div class="kpi-value" x-text="'$' + fmt(data?.summary?.total_cost_usd)"></div>
+          <div class="kpi-sub" x-text="fmt(data?.summary?.total_tokens / 1e9, 1) + 'B tokens'"></div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-label"><i data-lucide="activity"></i> Sessions</div>
+          <div class="kpi-value" x-text="data?.summary?.total_sessions?.toLocaleString()"></div>
+          <div class="kpi-sub" x-text="'$' + fmt(data?.summary?.total_sessions > 0 ? data?.summary?.total_cost_usd / data?.summary?.total_sessions : 0) + '/session avg'"></div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-label"><i data-lucide="coins"></i> Tokens</div>
+          <div class="kpi-value" x-text="fmt(data?.summary?.total_tokens / 1e9, 1) + 'B'"></div>
+          <div class="kpi-sub" x-text="fmt(data?.summary?.total_tokens / Math.max(data?.summary?.total_sessions, 1) / 1e6, 1) + 'M/session'"></div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-label"><i data-lucide="receipt"></i> Avg Cost/Session</div>
+          <div class="kpi-value" x-text="'$' + fmt(data?.summary?.total_sessions > 0 ? data?.summary?.total_cost_usd / data?.summary?.total_sessions : 0)"></div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-label"><i data-lucide="hand"></i> HIR</div>
+          <div class="kpi-value" :style="`color: ${hirColor(data?.summary?.avg_hir)}`" x-text="pct(data?.summary?.avg_hir)"></div>
+          <div class="kpi-sub">human intervention rate</div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-label"><i data-lucide="frown"></i> Frustration</div>
+          <div class="kpi-value" :style="`color: ${frustColor(data?.summary?.avg_frustration)}`" x-text="fmt(data?.summary?.avg_frustration, 1)"></div>
+          <div class="kpi-sub">avg score (0-10)</div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-label"><i data-lucide="target"></i> Tool Precision</div>
+          <div class="kpi-value" :style="`color: ${data?.summary?.avg_tool_precision > 0.9 ? 'var(--success)' : 'var(--warning)'}`" x-text="pct(data?.summary?.avg_tool_precision)"></div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-label"><i data-lucide="terminal"></i> Commands</div>
+          <div class="kpi-value" x-text="data?.summary?.total_commands_used?.toLocaleString()"></div>
+          <div class="kpi-sub" x-text="Object.keys(data?.command_frequency || {}).length + ' unique'"></div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-label"><i data-lucide="git-branch"></i> Subagent Ratio</div>
+          <div class="kpi-value" x-text="pct(data?.summary?.total_subagent_sessions / Math.max(data?.summary?.total_sessions, 1))"></div>
+          <div class="kpi-sub" x-text="data?.summary?.total_subagent_sessions + ' sessions with subagents'"></div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-label"><i data-lucide="crown"></i> Top Domain</div>
+          <div class="kpi-value" style="font-size: 18px;" x-text="(data?.domains?.[0]?.name || '-')"></div>
+          <div class="kpi-sub" x-text="data?.domains?.[0] ? '$' + fmt(data.domains[0].cost) : ''"></div>
+        </div>
       </div>
 
       <!-- Heatmap -->
-      <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
-        <h3 class="text-lg font-semibold mb-4">Activity Heatmap (tokens by day/hour)</h3>
-        <div id="heatmapContainer" class="overflow-x-auto"></div>
+      <div class="card" style="padding: 20px; margin-bottom: 24px;">
+        <div style="font-size: 13px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="grid-3x3" style="width: 14px; height: 14px; color: var(--text-secondary);"></i>
+          <span>Token Heatmap</span>
+          <span class="text-muted" style="font-size: 11px; margin-left: 4px;">days x hours</span>
+        </div>
+        <div x-ref="heatmapChart" class="chart-container" style="height: 280px;"></div>
+      </div>
+
+      <!-- Daily Trend -->
+      <div class="card" style="padding: 20px;">
+        <div style="font-size: 13px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="trending-up" style="width: 14px; height: 14px; color: var(--text-secondary);"></i>
+          <span>Daily Trend</span>
+        </div>
+        <div x-ref="dailyChart" class="chart-container" style="height: 260px;"></div>
       </div>
     </div>
 
-    <!-- Tab: Sessions -->
-    <div x-show="tab === 'sessions' && data" x-cloak>
-      <div class="rounded-xl overflow-hidden" style="background: var(--card); border: 1px solid var(--border);">
-        <table class="w-full text-sm">
+    <!-- Tab 2: Domains -->
+    <div x-show="tab === 'domains'">
+      <div class="card" style="padding: 20px; margin-bottom: 24px;">
+        <div style="font-size: 13px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="layers" style="width: 14px; height: 14px; color: var(--text-secondary);"></i>
+          <span>Cost by Domain</span>
+        </div>
+        <div x-ref="domainChart" class="chart-container" style="height: 240px;"></div>
+      </div>
+      <div class="card" style="overflow: hidden;">
+        <table>
           <thead>
-            <tr style="border-bottom: 1px solid var(--border);">
-              <th class="text-left p-3 cursor-pointer" @click="sortSessions('cost')">Cost <span x-text="sortKey==='cost' ? (sortAsc ? '↑' : '↓') : ''"></span></th>
-              <th class="text-left p-3 cursor-pointer" @click="sortSessions('tokens')">Tokens <span x-text="sortKey==='tokens' ? (sortAsc ? '↑' : '↓') : ''"></span></th>
-              <th class="text-left p-3 cursor-pointer" @click="sortSessions('hir')">HIR <span x-text="sortKey==='hir' ? (sortAsc ? '↑' : '↓') : ''"></span></th>
-              <th class="text-left p-3 cursor-pointer" @click="sortSessions('frustration')">Frustration <span x-text="sortKey==='frustration' ? (sortAsc ? '↑' : '↓') : ''"></span></th>
-              <th class="text-left p-3">Project</th>
-              <th class="text-left p-3">First Prompt</th>
+            <tr>
+              <th>Domain</th><th>Sessions</th><th>Tokens</th><th>Cost</th><th>HIR</th><th>Subagent Ratio</th>
             </tr>
           </thead>
           <tbody>
-            <template x-for="s in sortedSessions()" :key="s.session_id">
-              <tr style="border-bottom: 1px solid var(--border);">
-                <td class="p-3 font-mono" x-text="'$' + s.cost.toFixed(2)"></td>
-                <td class="p-3 font-mono" x-text="s.tokens.toLocaleString()"></td>
-                <td class="p-3" x-text="(s.hir * 100).toFixed(1) + '%'"></td>
-                <td class="p-3" x-text="s.frustration + '/10'"></td>
-                <td class="p-3 text-xs" x-text="s.project"></td>
-                <td class="p-3 text-xs truncate max-w-xs" x-text="s.first_prompt"></td>
+            <template x-for="d in data?.domains || []" :key="d.name">
+              <tr style="cursor: pointer;" @click="filterDomain = filterDomain === d.name ? null : d.name"
+                  :style="filterDomain === d.name ? 'background: var(--bg-card-hover)' : ''">
+                <td style="font-weight: 500;" x-text="d.name"></td>
+                <td x-text="d.sessions"></td>
+                <td x-text="fmt(d.tokens / 1e6, 1) + 'M'"></td>
+                <td x-text="'$' + fmt(d.cost)"></td>
+                <td><span :class="hirBadge(d.hir)" class="badge" x-text="pct(d.hir)"></span></td>
+                <td x-text="pct(d.subagent_ratio)"></td>
               </tr>
             </template>
           </tbody>
@@ -122,306 +311,382 @@
       </div>
     </div>
 
-    <!-- Tab: Cost -->
-    <div x-show="tab === 'cost' && data" x-cloak>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
-          <h3 class="text-lg font-semibold mb-4">Cost by Project</h3>
-          <canvas id="projectCostChart"></canvas>
-        </div>
-        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
-          <h3 class="text-lg font-semibold mb-4">Daily Cost</h3>
-          <canvas id="dailyCostChart"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tab: Commands -->
-    <div x-show="tab === 'commands' && data" x-cloak>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
-          <h3 class="text-lg font-semibold mb-4">Command Frequency</h3>
-          <canvas id="commandChart"></canvas>
-        </div>
-        <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
-          <h3 class="text-lg font-semibold mb-4">Subagent Efficiency by Project</h3>
-          <div class="space-y-3">
-            <template x-for="p in data.projects" :key="p.project">
-              <div class="flex items-center gap-3">
-                <span class="text-xs w-32 truncate" x-text="p.project"></span>
-                <div class="flex-1 h-4 rounded-full overflow-hidden" style="background: var(--border);">
-                  <div class="h-full rounded-full" style="background: var(--accent);"
-                       :style="'width:' + Math.min(100, (p.cost > 0 ? 100 : 0)) + '%'"></div>
-                </div>
-                <span class="text-xs font-mono" x-text="'$' + p.cost.toFixed(2)"></span>
-              </div>
+    <!-- Tab 3: Sessions -->
+    <div x-show="tab === 'sessions'">
+      <div class="card" style="overflow: hidden; margin-bottom: 24px;">
+        <table>
+          <thead>
+            <tr>
+              <th @click="toggleSort('date')" :class="sortCol==='date' ? 'sorted' : ''">Date <span class="sort-indicator" x-text="sortCol==='date' ? (sortDir==='asc' ? '↑' : '↓') : '↕'"></span></th>
+              <th @click="toggleSort('project')" :class="sortCol==='project' ? 'sorted' : ''">Project <span class="sort-indicator" x-text="sortCol==='project' ? (sortDir==='asc' ? '↑' : '↓') : '↕'"></span></th>
+              <th @click="toggleSort('cost')" :class="sortCol==='cost' ? 'sorted' : ''">Cost <span class="sort-indicator" x-text="sortCol==='cost' ? (sortDir==='asc' ? '↑' : '↓') : '↕'"></span></th>
+              <th @click="toggleSort('tokens')" :class="sortCol==='tokens' ? 'sorted' : ''">Tokens <span class="sort-indicator" x-text="sortCol==='tokens' ? (sortDir==='asc' ? '↑' : '↓') : '↕'"></span></th>
+              <th @click="toggleSort('hir')" :class="sortCol==='hir' ? 'sorted' : ''">HIR <span class="sort-indicator" x-text="sortCol==='hir' ? (sortDir==='asc' ? '↑' : '↓') : '↕'"></span></th>
+              <th @click="toggleSort('frustration')" :class="sortCol==='frustration' ? 'sorted' : ''">Frust. <span class="sort-indicator" x-text="sortCol==='frustration' ? (sortDir==='asc' ? '↑' : '↓') : '↕'"></span></th>
+              <th style="cursor: default;">First Prompt</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="s in sortedSessions()" :key="s.id">
+              <tr>
+                <td class="text-muted" x-text="s.date"></td>
+                <td style="font-weight: 500;" x-text="s.project"></td>
+                <td x-text="'$' + fmt(s.cost)"></td>
+                <td x-text="fmt(s.tokens / 1e6, 1) + 'M'"></td>
+                <td><span :class="hirBadge(s.hir)" class="badge" x-text="pct(s.hir)"></span></td>
+                <td><span :class="frustBadge(s.frustration)" class="badge" x-text="s.frustration"></span></td>
+                <td style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; color: var(--text-secondary); font-size: 12px;" x-text="s.first_prompt"></td>
+              </tr>
             </template>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Frustration Hotspots -->
+      <template x-if="(data?.frustration_hotspots || []).length > 0">
+        <div>
+          <div style="font-size: 13px; font-weight: 500; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="flame" style="width: 14px; height: 14px; color: var(--danger);"></i>
+            <span>Frustration Hotspots</span>
+            <span class="badge badge-red" x-text="'score > 5'"></span>
           </div>
+          <template x-for="h in data.frustration_hotspots" :key="h.session_id">
+            <div class="hotspot">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                <span style="font-size: 13px; font-weight: 500;" x-text="h.project"></span>
+                <span class="text-dim" style="font-size: 11px;" x-text="h.date"></span>
+                <span class="badge badge-red" x-text="h.score + '/10'"></span>
+              </div>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <template x-for="t in h.triggers" :key="t">
+                  <span style="font-size: 11px; color: var(--text-secondary); background: var(--bg-card); padding: 2px 8px; border-radius: 4px;" x-text="t"></span>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <!-- Tab 4: Tools & Commands -->
+    <div x-show="tab === 'tools'">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+        <div class="card" style="padding: 20px;">
+          <div style="font-size: 13px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="terminal" style="width: 14px; height: 14px; color: var(--text-secondary);"></i>
+            <span>Command Frequency</span>
+          </div>
+          <div x-ref="cmdChart" class="chart-container" style="height: 320px;"></div>
+        </div>
+        <div class="card" style="padding: 20px;">
+          <div style="font-size: 13px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="target" style="width: 14px; height: 14px; color: var(--text-secondary);"></i>
+            <span>Tool Precision</span>
+          </div>
+          <div x-ref="toolChart" class="chart-container" style="height: 320px;"></div>
         </div>
       </div>
-    </div>
-
-    <!-- Tab: Context -->
-    <div x-show="tab === 'context' && data" x-cloak>
-      <div class="rounded-xl p-6" style="background: var(--card); border: 1px solid var(--border);">
-        <h3 class="text-lg font-semibold mb-4">Context Fill Rate (Top Sessions)</h3>
-        <canvas id="contextFillChart"></canvas>
+      <div class="card" style="padding: 20px;">
+        <div style="font-size: 13px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="git-branch" style="width: 14px; height: 14px; color: var(--text-secondary);"></i>
+          <span>Sessions: HIR vs Cost</span>
+        </div>
+        <div x-ref="scatterChart" class="chart-container" style="height: 280px;"></div>
       </div>
-      <p class="text-xs mt-2" style="color: var(--muted);">Each line represents a session. X-axis: assistant message index, Y-axis: cumulative input tokens.</p>
     </div>
-  </div>
 
-  <script>
-  function App() {
-    return {
-      darkMode: localStorage.getItem('arcana-dark') === 'true',
-      tab: 'overview',
-      data: null,
-      loadError: false,
-      sortKey: 'cost',
-      sortAsc: false,
-      charts: {},
+    <!-- Tab 5: Context -->
+    <div x-show="tab === 'context'">
+      <div class="card" style="padding: 20px;">
+        <div style="font-size: 13px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="brain" style="width: 14px; height: 14px; color: var(--text-secondary);"></i>
+          <span>Context Fill Rate</span>
+          <span class="text-muted" style="font-size: 11px; margin-left: 4px;">top 10 longest sessions</span>
+        </div>
+        <div x-ref="contextChart" class="chart-container" style="height: 380px;"></div>
+      </div>
+    </div>
+  </main>
+</div>
 
-      async init() {
-        try {
-          const res = await fetch('data.json');
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          this.data = await res.json();
-          this.$nextTick(() => this.renderCharts());
-        } catch (e) {
-          console.error('Failed to load data.json:', e);
-          this.loadError = true;
+<script>
+function dashboard() {
+  return {
+    data: null,
+    error: null,
+    tab: 'overview',
+    darkMode: true,
+    filterDomain: null,
+    sortCol: 'cost',
+    sortDir: 'desc',
+    charts: {},
+    tabs: [
+      { id: 'overview', label: 'Overview', icon: 'layout-dashboard' },
+      { id: 'domains', label: 'Domains', icon: 'layers' },
+      { id: 'sessions', label: 'Sessions', icon: 'list' },
+      { id: 'tools', label: 'Tools & Commands', icon: 'wrench' },
+      { id: 'context', label: 'Context', icon: 'brain' },
+    ],
+
+    async init() {
+      this.darkMode = localStorage.getItem('analytics-theme') !== 'light';
+      this.applyTheme();
+      await this.loadData();
+      setInterval(() => {
+        if (document.visibilityState === 'visible') this.loadData();
+      }, 60000);
+      this.$watch('tab', () => {
+        this.$nextTick(() => { this.renderCharts(); this.refreshIcons(); });
+      });
+    },
+
+    async loadData() {
+      try {
+        if (window.__ANALYTICS_DATA__) {
+          this.data = window.__ANALYTICS_DATA__;
+          this.error = null;
+          this.$nextTick(() => { this.renderCharts(); this.refreshIcons(); });
+          return;
         }
-      },
+        const res = await fetch('data.json?t=' + Date.now());
+        if (!res.ok) throw new Error('not found');
+        this.data = await res.json();
+        this.error = null;
+        this.$nextTick(() => { this.renderCharts(); this.refreshIcons(); });
+      } catch (e) {
+        this.error = 'Could not load data.json';
+      }
+    },
 
-      toggleDark() {
-        this.darkMode = !this.darkMode;
-        localStorage.setItem('arcana-dark', this.darkMode);
-        // Re-render charts with new colors
-        this.$nextTick(() => this.renderCharts());
-      },
+    async refresh() { await this.loadData(); },
 
-      switchTab(t) {
-        this.tab = t;
-        this.$nextTick(() => this.renderCharts());
-      },
+    switchTab(id) {
+      this.tab = id;
+    },
 
-      getColor(name) {
-        const style = getComputedStyle(document.body);
-        return style.getPropertyValue('--' + name).trim();
-      },
+    refreshIcons() {
+      if (window.lucide) lucide.createIcons();
+    },
 
-      sortSessions(key) {
-        if (this.sortKey === key) {
-          this.sortAsc = !this.sortAsc;
-        } else {
-          this.sortKey = key;
-          this.sortAsc = false;
+    toggleTheme() {
+      this.darkMode = !this.darkMode;
+      localStorage.setItem('analytics-theme', this.darkMode ? 'dark' : 'light');
+      this.applyTheme();
+      this.$nextTick(() => { this.renderCharts(); this.refreshIcons(); });
+    },
+
+    applyTheme() {
+      document.documentElement.classList.toggle('light', !this.darkMode);
+    },
+
+    // Helpers
+    fmt(v, d=2) { return v != null ? Number(v).toFixed(d) : '-'; },
+    pct(v) { return v != null ? (v * 100).toFixed(1) + '%' : '-'; },
+
+    hirColor(v) {
+      if (v == null) return 'var(--text-primary)';
+      return v < 0.1 ? 'var(--success)' : v < 0.2 ? 'var(--warning)' : 'var(--danger)';
+    },
+    frustColor(v) {
+      if (v == null) return 'var(--text-primary)';
+      return v < 3 ? 'var(--success)' : v < 6 ? 'var(--warning)' : 'var(--danger)';
+    },
+    hirBadge(v) { return v < 0.1 ? 'badge-green' : v < 0.2 ? 'badge-yellow' : 'badge-red'; },
+    frustBadge(v) { return v < 3 ? 'badge-green' : v < 6 ? 'badge-yellow' : 'badge-red'; },
+
+    sortedSessions() {
+      let sessions = [...(this.data?.costly_sessions || [])];
+      if (this.filterDomain) sessions = sessions.filter(s => s.domain === this.filterDomain);
+      const col = this.sortCol, dir = this.sortDir === 'asc' ? 1 : -1;
+      sessions.sort((a, b) => {
+        const va = a[col] ?? '', vb = b[col] ?? '';
+        return (typeof va === 'number' ? (va - vb) : String(va).localeCompare(String(vb))) * dir;
+      });
+      return sessions;
+    },
+
+    toggleSort(col) {
+      if (this.sortCol === col) { this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc'; }
+      else { this.sortCol = col; this.sortDir = 'desc'; }
+    },
+
+    echartsTheme() {
+      const isDark = this.darkMode;
+      return {
+        bg: isDark ? '#0a0a0a' : '#fafafa',
+        text: isDark ? '#888' : '#666',
+        axis: isDark ? '#222' : '#eaeaea',
+        tooltip: isDark ? '#1a1a1a' : '#fff',
+        tooltipBorder: isDark ? '#333' : '#eaeaea',
+      };
+    },
+
+    disposeChart(ref) {
+      if (this.charts[ref]) { this.charts[ref].dispose(); delete this.charts[ref]; }
+    },
+
+    getChart(ref) {
+      const el = this.$refs[ref];
+      if (!el) return null;
+      this.disposeChart(ref);
+      const chart = echarts.init(el, null, { renderer: 'canvas' });
+      this.charts[ref] = chart;
+      return chart;
+    },
+
+    renderCharts() {
+      if (!this.data) return;
+      const t = this.echartsTheme();
+      const accent = '#0070f3';
+      const success = '#0cce6b';
+      const warning = '#f5a623';
+      const danger = '#ee0000';
+
+      if (this.tab === 'overview') {
+        // Heatmap
+        const hm = this.getChart('heatmapChart');
+        if (hm) {
+          const heatmap = this.data.heatmap || {};
+          const days = Object.keys(heatmap).sort();
+          const hmData = [];
+          let maxVal = 0;
+          days.forEach((day, di) => {
+            for (let h = 0; h < 24; h++) {
+              const val = heatmap[day]?.[String(h).padStart(2, '0')] || 0;
+              hmData.push([di, h, val]);
+              if (val > maxVal) maxVal = val;
+            }
+          });
+          hm.setOption({
+            tooltip: { formatter: p => `${days[p.data[0]]} ${String(p.data[1]).padStart(2,'0')}:00<br/>${(p.data[2]/1e6).toFixed(1)}M tokens`, backgroundColor: t.tooltip, borderColor: t.tooltipBorder, textStyle: { color: this.darkMode ? '#eee' : '#333', fontSize: 12 } },
+            grid: { left: 50, right: 20, top: 10, bottom: 40 },
+            xAxis: { type: 'category', data: days.map(d => d.slice(5)), axisTick: { show: false }, axisLine: { lineStyle: { color: t.axis } }, axisLabel: { color: t.text, fontSize: 11 } },
+            yAxis: { type: 'category', data: Array.from({length:24}, (_,i) => String(i).padStart(2,'0')), axisTick: { show: false }, axisLine: { lineStyle: { color: t.axis } }, axisLabel: { color: t.text, fontSize: 11 } },
+            visualMap: { min: 0, max: maxVal || 1, show: false, inRange: { color: this.darkMode ? ['#111', '#0d3320', '#0a5c2f', '#0070f3', '#7c3aed'] : ['#f5f5f5', '#d1fae5', '#6ee7b7', '#0070f3', '#7c3aed'] } },
+            series: [{ type: 'heatmap', data: hmData, itemStyle: { borderRadius: 2 }, emphasis: { itemStyle: { borderColor: '#fff', borderWidth: 1 } } }],
+          });
         }
-      },
 
-      sortedSessions() {
-        if (!this.data) return [];
-        const sessions = [...this.data.costly_sessions];
-        const key = this.sortKey;
-        const dir = this.sortAsc ? 1 : -1;
-        sessions.sort((a, b) => (a[key] - b[key]) * dir);
-        return sessions;
-      },
-
-      destroyChart(id) {
-        if (this.charts[id]) {
-          this.charts[id].destroy();
-          delete this.charts[id];
+        // Daily trend
+        const dc = this.getChart('dailyChart');
+        if (dc) {
+          const daily = this.data.daily || [];
+          dc.setOption({
+            tooltip: { trigger: 'axis', backgroundColor: t.tooltip, borderColor: t.tooltipBorder, textStyle: { color: this.darkMode ? '#eee' : '#333', fontSize: 12 } },
+            legend: { data: ['Cost ($)', 'Sessions'], textStyle: { color: t.text, fontSize: 11 }, top: 0 },
+            grid: { left: 50, right: 50, top: 36, bottom: 30 },
+            xAxis: { type: 'category', data: daily.map(d => d.date.slice(5)), axisLine: { lineStyle: { color: t.axis } }, axisLabel: { color: t.text, fontSize: 11 } },
+            yAxis: [
+              { type: 'value', name: 'Cost ($)', nameTextStyle: { color: t.text, fontSize: 11 }, axisLabel: { color: t.text, fontSize: 11 }, splitLine: { lineStyle: { color: t.axis } } },
+              { type: 'value', name: 'Sessions', nameTextStyle: { color: t.text, fontSize: 11 }, axisLabel: { color: t.text, fontSize: 11 }, splitLine: { show: false } },
+            ],
+            series: [
+              { name: 'Cost ($)', type: 'line', data: daily.map(d => d.cost), smooth: true, symbol: 'none', lineStyle: { color: accent, width: 2 }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1, [{offset:0,color:accent+'44'},{offset:1,color:accent+'05'}]) } },
+              { name: 'Sessions', type: 'line', yAxisIndex: 1, data: daily.map(d => d.sessions), smooth: true, symbol: 'none', lineStyle: { color: success, width: 2 } },
+            ],
+          });
         }
-      },
+      }
 
-      renderCharts() {
-        if (!this.data) return;
-        const accent = this.getColor('accent');
-        const accent2 = this.getColor('accent2');
-        const muted = this.getColor('muted');
-        const text = this.getColor('text');
-        const gridColor = this.getColor('border');
+      if (this.tab === 'domains') {
+        const ch = this.getChart('domainChart');
+        if (ch) {
+          const domains = this.data.domains || [];
+          ch.setOption({
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: t.tooltip, borderColor: t.tooltipBorder, textStyle: { color: this.darkMode ? '#eee' : '#333', fontSize: 12 } },
+            grid: { left: 100, right: 30, top: 10, bottom: 20 },
+            xAxis: { type: 'value', axisLabel: { color: t.text, fontSize: 11, formatter: '${value}' }, splitLine: { lineStyle: { color: t.axis } } },
+            yAxis: { type: 'category', data: domains.map(d => d.name).reverse(), axisLabel: { color: t.text, fontSize: 12 }, axisTick: { show: false }, axisLine: { lineStyle: { color: t.axis } } },
+            series: [{ type: 'bar', data: domains.map(d => d.cost).reverse(), itemStyle: { color: accent, borderRadius: [0, 4, 4, 0] }, barWidth: 20 }],
+          });
+        }
+      }
 
-        const commonOptions = {
-          animation: false,
-          responsive: true,
-          maintainAspectRatio: true,
-          plugins: { legend: { labels: { color: text } } },
-          scales: {
-            x: { ticks: { color: muted }, grid: { color: gridColor } },
-            y: { ticks: { color: muted }, grid: { color: gridColor } },
-          },
-        };
+      if (this.tab === 'tools') {
+        // Commands
+        const cc = this.getChart('cmdChart');
+        if (cc) {
+          const cmds = this.data.command_frequency || {};
+          const sorted = Object.entries(cmds).sort((a,b) => b[1]-a[1]).slice(0, 15);
+          cc.setOption({
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: t.tooltip, borderColor: t.tooltipBorder, textStyle: { color: this.darkMode ? '#eee' : '#333', fontSize: 12 } },
+            grid: { left: 100, right: 30, top: 10, bottom: 20 },
+            xAxis: { type: 'value', axisLabel: { color: t.text, fontSize: 11 }, splitLine: { lineStyle: { color: t.axis } } },
+            yAxis: { type: 'category', data: sorted.map(([k])=>k).reverse(), axisLabel: { color: t.text, fontSize: 11 }, axisTick: { show: false }, axisLine: { lineStyle: { color: t.axis } } },
+            series: [{ type: 'bar', data: sorted.map(([,v])=>v).reverse(), itemStyle: { color: accent+'bb', borderRadius: [0,3,3,0] }, barWidth: 16 }],
+          });
+        }
 
-        // Daily Trend
-        if (this.tab === 'overview') {
-          const el = document.getElementById('dailyTrendChart');
-          if (el) {
-            this.destroyChart('dailyTrend');
-            const daily = this.data.daily;
-            this.charts.dailyTrend = new Chart(el, {
-              type: 'line',
-              data: {
-                labels: daily.map(d => d.date),
-                datasets: [
-                  { label: 'Sessions', data: daily.map(d => d.sessions), borderColor: accent, backgroundColor: accent + '33', fill: true, tension: 0.3 },
-                  { label: 'Cost ($)', data: daily.map(d => d.cost), borderColor: accent2, backgroundColor: accent2 + '33', fill: false, tension: 0.3, yAxisID: 'y1' },
-                ],
-              },
-              options: {
-                ...commonOptions,
-                scales: {
-                  ...commonOptions.scales,
-                  y1: { position: 'right', ticks: { color: muted }, grid: { display: false } },
-                },
-              },
-            });
+        // Tool precision
+        const tp = this.getChart('toolChart');
+        if (tp) {
+          const tools = this.data.tool_precision?.by_tool || {};
+          const entries = Object.entries(tools).sort((a,b) => a[1]-b[1]);
+          tp.setOption({
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: t.tooltip, borderColor: t.tooltipBorder, textStyle: { color: this.darkMode ? '#eee' : '#333', fontSize: 12 }, formatter: p => `${p[0].name}: ${(p[0].value*100).toFixed(1)}%` },
+            grid: { left: 80, right: 30, top: 10, bottom: 20 },
+            xAxis: { type: 'value', min: 0, max: 1, axisLabel: { color: t.text, fontSize: 11, formatter: v=>(v*100)+'%' }, splitLine: { lineStyle: { color: t.axis } } },
+            yAxis: { type: 'category', data: entries.map(([k])=>k), axisLabel: { color: t.text, fontSize: 11 }, axisTick: { show: false }, axisLine: { lineStyle: { color: t.axis } } },
+            series: [{ type: 'bar', data: entries.map(([,v]) => ({ value: v, itemStyle: { color: v > 0.9 ? success : v > 0.8 ? warning : danger } })), barWidth: 16, itemStyle: { borderRadius: [0,3,3,0] } }],
+          });
+        }
+
+        // Scatter
+        const sc = this.getChart('scatterChart');
+        if (sc) {
+          const sessions = (this.data.costly_sessions || []);
+          sc.setOption({
+            tooltip: { formatter: p => `${p.data[2]}<br/>HIR: ${(p.data[0]*100).toFixed(1)}%<br/>Cost: $${p.data[1].toFixed(2)}`, backgroundColor: t.tooltip, borderColor: t.tooltipBorder, textStyle: { color: this.darkMode ? '#eee' : '#333', fontSize: 12 } },
+            grid: { left: 60, right: 30, top: 20, bottom: 40 },
+            xAxis: { name: 'HIR', nameLocation: 'center', nameGap: 25, nameTextStyle: { color: t.text, fontSize: 11 }, axisLabel: { color: t.text, fontSize: 11, formatter: v=>(v*100)+'%' }, splitLine: { lineStyle: { color: t.axis } } },
+            yAxis: { name: 'Cost ($)', nameTextStyle: { color: t.text, fontSize: 11 }, axisLabel: { color: t.text, fontSize: 11, formatter: '${value}' }, splitLine: { lineStyle: { color: t.axis } } },
+            series: [{ type: 'scatter', data: sessions.map(s => [s.hir, s.cost, s.project]), symbolSize: 10, itemStyle: { color: accent+'88' }, emphasis: { itemStyle: { color: accent, borderColor: '#fff', borderWidth: 1 } } }],
+          });
+        }
+      }
+
+      if (this.tab === 'context') {
+        const cx = this.getChart('contextChart');
+        if (cx) {
+          const fills = this.data.context_fills || [];
+          const colors = [accent, success, warning, danger, '#06b6d4', '#f97316', '#ec4899', '#8b5cf6', '#14b8a6', '#eab308'];
+          const series = fills.map((f, i) => ({
+            name: `${f.project} (${f.session_id.slice(0,6)})`,
+            type: 'line',
+            data: f.points.map(([idx, tok]) => [idx, tok]),
+            smooth: true,
+            symbol: 'none',
+            lineStyle: { width: 1.5, color: colors[i % colors.length] },
+          }));
+          // Add marker lines
+          const markLines = [
+            { yAxis: 100000, name: '200K 50%', lineStyle: { color: warning+'55', type: 'dashed', width: 1 } },
+            { yAxis: 160000, name: '200K 80%', lineStyle: { color: danger+'55', type: 'dashed', width: 1 } },
+            { yAxis: 500000, name: '1M 50%', lineStyle: { color: warning+'33', type: 'dashed', width: 1 } },
+            { yAxis: 800000, name: '1M 80%', lineStyle: { color: danger+'33', type: 'dashed', width: 1 } },
+          ];
+          if (series.length > 0) {
+            series[0].markLine = { silent: true, symbol: 'none', label: { color: t.text, fontSize: 10, position: 'insideEndTop' }, data: markLines };
           }
-          this.renderHeatmap();
+          cx.setOption({
+            tooltip: { trigger: 'axis', backgroundColor: t.tooltip, borderColor: t.tooltipBorder, textStyle: { color: this.darkMode ? '#eee' : '#333', fontSize: 11 } },
+            legend: { type: 'scroll', textStyle: { color: t.text, fontSize: 10 }, top: 0 },
+            grid: { left: 70, right: 30, top: 40, bottom: 30 },
+            xAxis: { type: 'value', name: 'Message Index', nameLocation: 'center', nameGap: 25, nameTextStyle: { color: t.text, fontSize: 11 }, axisLabel: { color: t.text, fontSize: 11 }, splitLine: { lineStyle: { color: t.axis } } },
+            yAxis: { type: 'value', name: 'Input Tokens', nameTextStyle: { color: t.text, fontSize: 11 }, axisLabel: { color: t.text, fontSize: 11, formatter: v => (v/1e6).toFixed(1)+'M' }, splitLine: { lineStyle: { color: t.axis } } },
+            series,
+          });
         }
+      }
 
-        // Project Cost
-        if (this.tab === 'cost') {
-          const projEl = document.getElementById('projectCostChart');
-          if (projEl) {
-            this.destroyChart('projectCost');
-            const projs = this.data.projects.slice(0, 15);
-            this.charts.projectCost = new Chart(projEl, {
-              type: 'bar',
-              data: {
-                labels: projs.map(p => p.project),
-                datasets: [{ label: 'Cost ($)', data: projs.map(p => p.cost), backgroundColor: accent + 'cc' }],
-              },
-              options: { ...commonOptions, indexAxis: 'y' },
-            });
-          }
-
-          const costEl = document.getElementById('dailyCostChart');
-          if (costEl) {
-            this.destroyChart('dailyCost');
-            const daily = this.data.daily;
-            this.charts.dailyCost = new Chart(costEl, {
-              type: 'line',
-              data: {
-                labels: daily.map(d => d.date),
-                datasets: [{ label: 'Daily Cost ($)', data: daily.map(d => d.cost), borderColor: accent, backgroundColor: accent + '33', fill: true, tension: 0.3 }],
-              },
-              options: commonOptions,
-            });
-          }
-        }
-
-        // Command Frequency
-        if (this.tab === 'commands') {
-          const cmdEl = document.getElementById('commandChart');
-          if (cmdEl) {
-            this.destroyChart('command');
-            const freq = this.data.command_frequency;
-            const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 20);
-            this.charts.command = new Chart(cmdEl, {
-              type: 'bar',
-              data: {
-                labels: sorted.map(([cmd]) => '/' + cmd),
-                datasets: [{ label: 'Uses', data: sorted.map(([, n]) => n), backgroundColor: accent + 'cc' }],
-              },
-              options: { ...commonOptions, indexAxis: 'y' },
-            });
-          }
-        }
-
-        // Context Fill
-        if (this.tab === 'context') {
-          const ctxEl = document.getElementById('contextFillChart');
-          if (ctxEl) {
-            this.destroyChart('contextFill');
-            const fills = this.data.context_fills.slice(0, 5);
-            const colors = [accent, accent2, '#f59e0b', '#10b981', '#ef4444'];
-            const maxLen = Math.max(...fills.map(f => f.fill.length), 1);
-            const labels = Array.from({ length: maxLen }, (_, i) => i);
-            const datasets = fills.map((f, i) => ({
-              label: f.project + ' (' + f.session_id.substring(0, 8) + ')',
-              data: f.fill.map(([idx, val]) => ({ x: idx, y: val })),
-              borderColor: colors[i % colors.length],
-              fill: false,
-              tension: 0.2,
-              pointRadius: 0,
-            }));
-            this.charts.contextFill = new Chart(ctxEl, {
-              type: 'line',
-              data: { labels, datasets },
-              options: {
-                ...commonOptions,
-                scales: {
-                  x: { type: 'linear', title: { display: true, text: 'Message Index', color: muted }, ticks: { color: muted }, grid: { color: gridColor } },
-                  y: { title: { display: true, text: 'Cumulative Input Tokens', color: muted }, ticks: { color: muted }, grid: { color: gridColor } },
-                },
-              },
-            });
-          }
-        }
-      },
-
-      renderHeatmap() {
-        const container = document.getElementById('heatmapContainer');
-        if (!container || !this.data) return;
-
-        const heatmap = this.data.heatmap;
-        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        const hours = 24;
-        const cellSize = 18;
-        const gap = 3;
-        const labelW = 36;
-        const labelH = 20;
-        const w = labelW + hours * (cellSize + gap);
-        const h = labelH + days.length * (cellSize + gap);
-
-        // Find max for color scale
-        let maxVal = 0;
-        for (const dow of days) {
-          for (let hr = 0; hr < hours; hr++) {
-            const val = (heatmap[dow] && heatmap[dow][hr]) || 0;
-            if (val > maxVal) maxVal = val;
-          }
-        }
-
-        const heatClass = (val) => {
-          if (!val || !maxVal) return 'heat-0';
-          const ratio = val / maxVal;
-          if (ratio < 0.1) return 'heat-0';
-          if (ratio < 0.25) return 'heat-1';
-          if (ratio < 0.45) return 'heat-2';
-          if (ratio < 0.65) return 'heat-3';
-          if (ratio < 0.85) return 'heat-4';
-          return 'heat-5';
-        };
-
-        let svg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">`;
-
-        // Hour labels
-        for (let hr = 0; hr < hours; hr++) {
-          if (hr % 3 === 0) {
-            svg += `<text x="${labelW + hr * (cellSize + gap) + cellSize / 2}" y="${labelH - 4}" text-anchor="middle" fill="var(--muted)" font-size="10">${hr}</text>`;
-          }
-        }
-
-        // Day rows
-        for (let di = 0; di < days.length; di++) {
-          const y = labelH + di * (cellSize + gap);
-          svg += `<text x="0" y="${y + cellSize / 2 + 4}" fill="var(--muted)" font-size="10">${days[di]}</text>`;
-          for (let hr = 0; hr < hours; hr++) {
-            const x = labelW + hr * (cellSize + gap);
-            const val = (heatmap[days[di]] && heatmap[days[di]][hr]) || 0;
-            svg += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="3" class="${heatClass(val)}"><title>${days[di]} ${hr}:00 - ${val.toLocaleString()} tokens</title></rect>`;
-          }
-        }
-
-        svg += '</svg>';
-        container.innerHTML = svg;
-      },
-    };
+      // Resize handler
+      window.onresize = () => { Object.values(this.charts).forEach(c => c?.resize()); };
+    },
   }
-  </script>
+}
+
+// Init Lucide icons after DOM loads
+document.addEventListener('DOMContentLoaded', () => { if (window.lucide) lucide.createIcons(); });
+</script>
 </body>
 </html>

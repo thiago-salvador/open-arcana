@@ -2,18 +2,20 @@
 """
 Claude Code analytics engine.
 Computes behavioral metrics from ~/.claude/projects/ JSONL files.
-Outputs data.json to the vault's 00-Dashboard/ directory.
+Outputs data.json (and optionally embeds into analytics.html) to the vault's
+00-Dashboard/ directory.
 
 Usage:
   python3 analytics_engine.py
   SINCE_DAYS=7 python3 analytics_engine.py
   SINCE_DATE=2026-04-01 python3 analytics_engine.py
   VAULT_PATH=/path/to/vault python3 analytics_engine.py
+  python3 analytics_engine.py --stdout
 
 Environment variables:
   SINCE_DAYS   - Only include sessions from the last N days (default: 7)
   SINCE_DATE   - Only include sessions since this date (YYYY-MM-DD)
-  VAULT_PATH   - Output directory (default: auto-detect)
+  VAULT_PATH   - Output directory (default: current directory)
 """
 
 import json
@@ -21,12 +23,12 @@ import os
 import re
 import sys
 from pathlib import Path
-from collections import defaultdict
+from collections import defaultdict, Counter
 from datetime import datetime, timedelta, timezone
 
 PROJECTS_DIR = Path.home() / ".claude" / "projects"
+USERNAME = Path.home().name
 
-USERNAME = os.environ.get("USERNAME", Path.home().name)
 VAULT_PATH = os.environ.get("VAULT_PATH", "")
 SINCE_DAYS = int(os.environ.get("SINCE_DAYS", "7")) or None
 SINCE_DATE = os.environ.get("SINCE_DATE")
@@ -40,13 +42,15 @@ PRICING = {
 }
 FAST_MODE_MULTIPLIER = 6.0
 
-# Frustration keywords
 FRUSTRATION_KEYWORDS = re.compile(
-    r"\b(wrong|broken|still|again|not working|wtf|ugh|no that|stop)\b", re.IGNORECASE
+    r"\b(wrong|broken|still not|again|not working|wtf|ugh|no that's|stop|nao|errado|quebrou|de novo)\b",
+    re.IGNORECASE,
 )
 
+COMMAND_PATTERN = re.compile(r"^/(\w[\w-]*)")
 
-# ── Utility functions (reused from token_analysis.py pattern) ──
+
+# ── Utility functions ──
 
 
 def extract_text_content(content):
@@ -75,6 +79,17 @@ def is_human_prompt(msg_obj):
     return True
 
 
+def calculate_cost(usage, fast_mode=True):
+    """Calculate estimated USD cost from token usage."""
+    cost = 0.0
+    for token_type, price_per_mtok in PRICING.items():
+        tokens = usage.get(token_type, 0)
+        cost += (tokens / 1_000_000) * price_per_mtok
+    if fast_mode:
+        cost *= FAST_MODE_MULTIPLIER
+    return cost
+
+
 def get_project_name(project_dir_name):
     """Convert directory name to readable project name."""
     name = project_dir_name
@@ -87,6 +102,14 @@ def get_project_name(project_dir_name):
     return name or project_dir_name
 
 
+def get_domain(project_dir_name):
+    """Map project directory name to a domain label."""
+    name = get_project_name(project_dir_name)
+    if "/" in name:
+        return name.split("/")[0].lower()
+    return name.lower() if name else "other"
+
+
 def get_cutoff():
     """Return a UTC-aware datetime cutoff, or None for all time."""
     if SINCE_DATE:
@@ -96,61 +119,84 @@ def get_cutoff():
     return None
 
 
-def session_in_range(session, cutoff):
-    if not cutoff or not session.get("timestamp_start"):
+def session_in_range(timestamp_start, cutoff):
+    """Check if session timestamp is within range."""
+    if not cutoff or not timestamp_start:
         return True
-    ts_str = session["timestamp_start"]
     try:
-        ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+        ts = datetime.fromisoformat(timestamp_start.replace("Z", "+00:00"))
         return ts >= cutoff
     except ValueError:
         return True
 
 
-def calculate_cost(usage, fast_mode=True):
-    """Calculate estimated USD cost from token usage."""
-    cost = 0.0
-    for token_type, price_per_mtok in PRICING.items():
-        tokens = usage.get(token_type, 0)
-        cost += (tokens / 1_000_000) * price_per_mtok
-    if fast_mode:
-        cost *= FAST_MODE_MULTIPLIER
-    return cost
+def word_set(text):
+    """Get set of lowercase words from text."""
+    return set(re.findall(r"\w+", text.lower()))
 
 
-def parse_session_lines(jsonl_path):
-    """Parse a JSONL file and return list of parsed line objects."""
-    try:
-        with open(jsonl_path) as f:
-            raw_lines = f.readlines()
-    except Exception:
-        return []
-
-    parsed = []
-    for line in raw_lines:
-        try:
-            parsed.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
-    return parsed
+def similarity_ratio(text1, text2):
+    """Simple word overlap ratio between two texts."""
+    w1 = word_set(text1)
+    w2 = word_set(text2)
+    if not w1 or not w2:
+        return 0.0
+    common = w1 & w2
+    return len(common) / max(len(w1), len(w2))
 
 
-def parse_session(jsonl_path, is_subagent=False):
-    """Parse a single JSONL session file."""
+# ── Single-pass session parser with all metrics ──
+
+
+def parse_session_full(jsonl_path):
+    """Parse a single JSONL session file and compute all 6 metrics in one pass."""
     usage_total = defaultdict(int)
     prompts = []
-    agent_id = None
     session_id = None
     timestamp_start = None
     timestamp_end = None
-    subagent_sessions = []
     model_used = None
 
-    lines = parse_session_lines(jsonl_path)
-    if not lines:
+    # HIR
+    tool_calls_total = 0
+    intervention_prompts = 0
+    last_was_tool_error = False
+
+    # Tool precision
+    tool_results = defaultdict(lambda: {"success": 0, "failure": 0})
+    pending_tool_uses = {}
+
+    # Context fill rate
+    context_points = []
+    cumulative_input = 0
+
+    # Commands/skills
+    commands = []
+    skills = []
+
+    # Frustration
+    frustration_score = 0
+    human_texts = []
+    last_frustration_msg_idx = -999
+
+    # Subagents
+    subagent_tokens = 0
+    subagent_count = 0
+
+    msg_index = 0
+
+    try:
+        with open(jsonl_path) as f:
+            lines = f.readlines()
+    except Exception:
         return None
 
-    for obj in lines:
+    for line in lines:
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
         msg_type = obj.get("type")
         ts = obj.get("timestamp")
         if ts and not timestamp_start:
@@ -158,243 +204,365 @@ def parse_session(jsonl_path, is_subagent=False):
         if ts:
             timestamp_end = ts
 
-        if not agent_id:
-            agent_id = obj.get("agentId")
         if not session_id:
             session_id = obj.get("sessionId")
 
         if msg_type == "assistant":
             msg = obj.get("message", {})
             usage = msg.get("usage", {})
-            usage_total["input_tokens"] += usage.get("input_tokens", 0)
+            input_tok = usage.get("input_tokens", 0)
+            usage_total["input_tokens"] += input_tok
             usage_total["cache_creation_input_tokens"] += usage.get("cache_creation_input_tokens", 0)
             usage_total["cache_read_input_tokens"] += usage.get("cache_read_input_tokens", 0)
             usage_total["output_tokens"] += usage.get("output_tokens", 0)
+
             if not model_used and msg.get("model"):
                 model_used = msg.get("model")
+
+            # Context fill rate
+            cumulative_input += input_tok
+            if input_tok > 0:
+                context_points.append([msg_index, cumulative_input])
+
+            # Parse tool_use blocks
+            content = msg.get("content", [])
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "tool_use":
+                        tool_name = block.get("name", "unknown")
+                        tool_id = block.get("id", "")
+                        pending_tool_uses[tool_id] = tool_name
+                        tool_calls_total += 1
+
+                        # Detect Skill tool invocations
+                        if tool_name == "Skill":
+                            inp = block.get("input", {})
+                            skill_name = inp.get("skill", "")
+                            if skill_name:
+                                skills.append(skill_name)
+
+            msg_index += 1
 
         elif msg_type == "user":
             user_type = obj.get("userType", "")
             is_sidechain = obj.get("isSidechain", False)
             content = obj.get("message", {}).get("content", "")
+
+            # Check for tool_result blocks
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "tool_result":
+                        tool_id = block.get("tool_use_id", "")
+                        tool_name = pending_tool_uses.pop(tool_id, "unknown")
+                        is_error = block.get("is_error", False)
+                        result_content = extract_text_content(block.get("content", ""))
+
+                        if is_error or re.search(r"\b(Error|error|failed|FAILED)\b", result_content[:500]):
+                            tool_results[tool_name]["failure"] += 1
+                            last_was_tool_error = True
+                        else:
+                            tool_results[tool_name]["success"] += 1
+                            last_was_tool_error = False
+
             text = extract_text_content(content)
 
             if text and not is_sidechain and is_human_prompt(obj) and user_type != "tool":
-                prompts.append({
-                    "text": text,
-                    "timestamp": obj.get("timestamp"),
-                    "entrypoint": obj.get("entrypoint", ""),
-                })
+                # HIR: intervention after tool error
+                if last_was_tool_error:
+                    intervention_prompts += 1
+                last_was_tool_error = False
 
-    # Check for subagent sessions
+                prompts.append({"text": text, "timestamp": obj.get("timestamp")})
+                human_texts.append(text)
+
+                # Command detection
+                cmd_match = COMMAND_PATTERN.match(text.strip())
+                if cmd_match:
+                    commands.append(cmd_match.group(0))
+
+                # Frustration: keyword check
+                human_idx = len(human_texts) - 1
+                if FRUSTRATION_KEYWORDS.search(text):
+                    frustration_score += 1
+                    last_frustration_msg_idx = human_idx
+
+                # Frustration: repeated prompt (similarity > 0.8 within window of 3)
+                if human_idx >= 1:
+                    for prev_idx in range(max(0, human_idx - 2), human_idx):
+                        if similarity_ratio(human_texts[prev_idx], text) > 0.8:
+                            frustration_score += 2
+                            last_frustration_msg_idx = human_idx
+                            break
+
+            msg_index += 1
+
+    # Frustration: +3 if session ends within 2 msgs after frustration signal
+    total_human = len(human_texts)
+    if last_frustration_msg_idx >= 0 and (total_human - last_frustration_msg_idx) <= 2:
+        frustration_score += 3
+
+    frustration_score = min(frustration_score, 10)
+
+    # Frustration triggers for hotspots
+    frustration_triggers = []
+    if frustration_score > 0:
+        for i, text in enumerate(human_texts):
+            if FRUSTRATION_KEYWORDS.search(text):
+                match = FRUSTRATION_KEYWORDS.search(text)
+                frustration_triggers.append(f"keyword: {match.group()}")
+            if i >= 1:
+                for prev_idx in range(max(0, i - 2), i):
+                    if similarity_ratio(human_texts[prev_idx], text) > 0.8:
+                        frustration_triggers.append(f"repeated prompt x{i - prev_idx + 1}")
+                        break
+        if last_frustration_msg_idx >= 0 and (total_human - last_frustration_msg_idx) <= 2:
+            frustration_triggers.append("early session end after frustration")
+
+    # Subagent sessions
     session_dir = jsonl_path.parent / jsonl_path.stem
     if session_dir.is_dir():
         subagents_dir = session_dir / "subagents"
         if subagents_dir.is_dir():
             for sub_file in subagents_dir.glob("*.jsonl"):
-                sub_data = parse_session(sub_file, is_subagent=True)
-                if sub_data:
-                    sub_data["subagent_file"] = str(sub_file.name)
-                    subagent_sessions.append(sub_data)
+                try:
+                    sub_usage = defaultdict(int)
+                    with open(sub_file) as sf:
+                        for sline in sf:
+                            try:
+                                sobj = json.loads(sline)
+                                if sobj.get("type") == "assistant":
+                                    su = sobj.get("message", {}).get("usage", {})
+                                    for k in PRICING:
+                                        sub_usage[k] += su.get(k, 0)
+                            except json.JSONDecodeError:
+                                continue
+                    sub_total = sum(sub_usage.values())
+                    if sub_total > 0:
+                        subagent_tokens += sub_total
+                        subagent_count += 1
+                except Exception:
+                    continue
 
-    total_tokens = (
-        usage_total["input_tokens"]
-        + usage_total["cache_creation_input_tokens"]
-        + usage_total["cache_read_input_tokens"]
-        + usage_total["output_tokens"]
-    )
+    total_tokens = sum(usage_total.values())
+
+    # HIR
+    hir = intervention_prompts / tool_calls_total if tool_calls_total > 0 else 0.0
+
+    # Tool precision
+    total_success = sum(v["success"] for v in tool_results.values())
+    total_failure = sum(v["failure"] for v in tool_results.values())
+    tool_precision_overall = total_success / (total_success + total_failure) if (total_success + total_failure) > 0 else 0.0
+
+    tool_precision_by_tool = {}
+    for tname, counts in tool_results.items():
+        total = counts["success"] + counts["failure"]
+        if total > 0:
+            tool_precision_by_tool[tname] = round(counts["success"] / total, 3)
+
+    # Subagent ratio
+    subagent_ratio = subagent_tokens / total_tokens if total_tokens > 0 else 0.0
+
+    first_prompt = prompts[0]["text"][:200].replace("\n", " ") if prompts else ""
+    session_date = timestamp_start[:10] if timestamp_start else ""
 
     return {
-        "file": str(jsonl_path),
         "session_id": session_id or jsonl_path.stem,
-        "agent_id": agent_id,
-        "is_subagent": is_subagent,
         "timestamp_start": timestamp_start,
         "timestamp_end": timestamp_end,
+        "date": session_date,
         "model": model_used,
         "usage": dict(usage_total),
         "total_tokens": total_tokens,
-        "prompts": prompts,
-        "subagent_sessions": subagent_sessions,
-        "lines": lines,
-    }
-
-
-def analyze_all():
-    """Analyze all projects and sessions."""
-    projects = defaultdict(list)
-    cutoff = get_cutoff()
-
-    if not PROJECTS_DIR.is_dir():
-        return projects
-
-    for project_dir in sorted(PROJECTS_DIR.iterdir()):
-        if not project_dir.is_dir():
-            continue
-        project_name = get_project_name(project_dir.name)
-
-        for jsonl_file in sorted(project_dir.glob("*.jsonl")):
-            session = parse_session(jsonl_file)
-            if session and session["total_tokens"] > 0 and session_in_range(session, cutoff):
-                projects[project_name].append(session)
-
-    return projects
-
-
-# ── Metric functions ──
-
-
-def compute_hir(session):
-    """Human Intervention Rate: intervention prompts / total tool calls."""
-    lines = session.get("lines", [])
-    tool_calls = 0
-    interventions = 0
-
-    i = 0
-    while i < len(lines):
-        obj = lines[i]
-        msg_type = obj.get("type")
-
-        if msg_type == "assistant":
-            msg = obj.get("message", {})
-            content = msg.get("content", [])
-            if isinstance(content, list):
-                for block in content:
-                    if isinstance(block, dict) and block.get("type") == "tool_use":
-                        tool_calls += 1
-
-        elif msg_type == "user" and tool_calls > 0:
-            # Check if this is a human re-prompt (not a tool_result)
-            if is_human_prompt(obj):
-                user_type = obj.get("userType", "")
-                is_sidechain = obj.get("isSidechain", False)
-                if not is_sidechain and user_type != "tool":
-                    text = extract_text_content(obj.get("message", {}).get("content", ""))
-                    if text:
-                        interventions += 1
-
-        i += 1
-
-    rate = interventions / tool_calls if tool_calls > 0 else 0.0
-    return {"interventions": interventions, "tool_calls": tool_calls, "rate": round(rate, 4)}
-
-
-def compute_context_fill(session):
-    """Track cumulative input_tokens from each assistant message."""
-    lines = session.get("lines", [])
-    fill_points = []
-    cumulative = 0
-    msg_index = 0
-
-    for obj in lines:
-        if obj.get("type") == "assistant":
-            usage = obj.get("message", {}).get("usage", {})
-            input_t = usage.get("input_tokens", 0)
-            cumulative += input_t
-            fill_points.append([msg_index, cumulative])
-            msg_index += 1
-
-    return fill_points
-
-
-def compute_frustration(session):
-    """Score 0-10 per session based on frustration signals."""
-    prompts = session.get("prompts", [])
-    score = 0
-
-    # Check repeated prompts (same text within 3 messages)
-    for i, p in enumerate(prompts):
-        window = prompts[max(0, i - 3):i]
-        for prev in window:
-            if p["text"].strip() == prev["text"].strip():
-                score += 2
-                break
-
-    # Check negative keywords
-    frustration_positions = []
-    for i, p in enumerate(prompts):
-        matches = FRUSTRATION_KEYWORDS.findall(p["text"])
-        score += len(matches)
-        if matches:
-            frustration_positions.append(i)
-
-    # Early abandonment: session ends within 2 messages of a frustration signal
-    if frustration_positions and len(prompts) > 0:
-        last_frustration = max(frustration_positions)
-        if len(prompts) - last_frustration <= 2:
-            score += 3
-
-    return min(score, 10)
-
-
-def compute_tool_precision(session):
-    """Parse tool_use + tool_result pairs. Count success/failure."""
-    lines = session.get("lines", [])
-    success = 0
-    failure = 0
-    total = 0
-
-    # Collect tool_use IDs from assistant messages, then match with tool_results
-    pending_tools = {}
-
-    for obj in lines:
-        msg_type = obj.get("type")
-
-        if msg_type == "assistant":
-            content = obj.get("message", {}).get("content", [])
-            if isinstance(content, list):
-                for block in content:
-                    if isinstance(block, dict) and block.get("type") == "tool_use":
-                        tool_id = block.get("id", "")
-                        if tool_id:
-                            pending_tools[tool_id] = True
-                            total += 1
-
-        elif msg_type == "user":
-            content = obj.get("message", {}).get("content", [])
-            if isinstance(content, list):
-                for block in content:
-                    if isinstance(block, dict) and block.get("type") == "tool_result":
-                        tool_id = block.get("tool_use_id", "")
-                        is_error = block.get("is_error", False)
-                        if tool_id in pending_tools:
-                            if is_error:
-                                failure += 1
-                            else:
-                                success += 1
-                            del pending_tools[tool_id]
-
-    precision = success / total if total > 0 else 1.0
-    return {"success": success, "failure": failure, "total": total, "precision": round(precision, 4)}
-
-
-def compute_command_frequency(session):
-    """Regex scan prompts for /command patterns (slash commands only, not paths)."""
-    freq = defaultdict(int)
-    # Match /word at start of line or after whitespace, exclude filesystem paths
-    path_segments = {"users", "home", "usr", "var", "tmp", "etc", "opt", "bin", "lib", "dev", "proc", "sys", "mnt"}
-    for p in session.get("prompts", []):
-        # Only match /word that looks like a command (start of text or after whitespace)
-        matches = re.findall(r"(?:^|\s)/([a-z][\w-]*)", p["text"], re.IGNORECASE)
-        for cmd in matches:
-            if cmd.lower() not in path_segments and len(cmd) > 1:
-                freq[cmd] += 1
-    return dict(freq)
-
-
-def compute_subagent_efficiency(session):
-    """Subagent tokens as ratio of total session tokens."""
-    subagent_tokens = 0
-    for sub in session.get("subagent_sessions", []):
-        subagent_tokens += sub.get("total_tokens", 0)
-
-    total_tokens = session.get("total_tokens", 0) + subagent_tokens
-    ratio = subagent_tokens / total_tokens if total_tokens > 0 else 0.0
-    return {
+        "cost": round(calculate_cost(dict(usage_total)), 4),
+        "hir": round(hir, 4),
+        "frustration": frustration_score,
+        "frustration_triggers": frustration_triggers,
+        "tool_precision": round(tool_precision_overall, 4),
+        "tool_precision_by_tool": tool_precision_by_tool,
+        "tool_calls_total": tool_calls_total,
+        "context_points": context_points,
+        "commands": commands,
+        "skills": skills,
         "subagent_tokens": subagent_tokens,
-        "total_tokens": total_tokens,
-        "ratio": round(ratio, 4),
+        "subagent_count": subagent_count,
+        "subagent_ratio": round(subagent_ratio, 4),
+        "first_prompt": first_prompt,
+        "prompts_count": len(prompts),
     }
+
+
+# ── Data aggregation ──
+
+
+def build_data(all_sessions):
+    """Build the data.json structure from all parsed sessions."""
+    cutoff = get_cutoff()
+    range_label = f"last {SINCE_DAYS} days" if SINCE_DAYS else (f"since {SINCE_DATE}" if SINCE_DATE else "all time")
+
+    sessions = [(pn, dom, dn, s) for pn, dom, dn, s in all_sessions
+                if session_in_range(s["timestamp_start"], cutoff) and s["total_tokens"] > 0]
+
+    total_cost = sum(s["cost"] for _, _, _, s in sessions)
+    total_tokens = sum(s["total_tokens"] for _, _, _, s in sessions)
+    total_sessions = len(sessions)
+    n = max(total_sessions, 1)
+
+    summary = {
+        "total_cost_usd": round(total_cost, 2),
+        "total_sessions": total_sessions,
+        "total_tokens": total_tokens,
+        "avg_hir": round(sum(s["hir"] for _, _, _, s in sessions) / n, 4),
+        "avg_frustration": round(sum(s["frustration"] for _, _, _, s in sessions) / n, 2),
+        "avg_tool_precision": round(sum(s["tool_precision"] for _, _, _, s in sessions) / n, 4),
+        "total_subagent_sessions": sum(1 for _, _, _, s in sessions if s["subagent_count"] > 0),
+        "total_commands_used": sum(len(s["commands"]) + len(s["skills"]) for _, _, _, s in sessions),
+    }
+
+    # Daily aggregation
+    daily_agg = defaultdict(lambda: {"sessions": 0, "tokens": 0, "cost": 0.0, "hir_sum": 0.0, "frust_sum": 0.0})
+    for _, _, _, s in sessions:
+        day = s["date"]
+        if day:
+            daily_agg[day]["sessions"] += 1
+            daily_agg[day]["tokens"] += s["total_tokens"]
+            daily_agg[day]["cost"] += s["cost"]
+            daily_agg[day]["hir_sum"] += s["hir"]
+            daily_agg[day]["frust_sum"] += s["frustration"]
+
+    daily = []
+    for day in sorted(daily_agg.keys()):
+        d = daily_agg[day]
+        dn = max(d["sessions"], 1)
+        daily.append({
+            "date": day, "sessions": d["sessions"], "tokens": d["tokens"],
+            "cost": round(d["cost"], 2), "hir": round(d["hir_sum"] / dn, 4),
+            "frustration": round(d["frust_sum"] / dn, 2),
+        })
+
+    # Domain aggregation
+    domain_agg = defaultdict(lambda: {"sessions": 0, "tokens": 0, "cost": 0.0, "hir_sum": 0.0, "subagent_tokens": 0, "total_tokens_for_ratio": 0})
+    for _, domain, _, s in sessions:
+        domain_agg[domain]["sessions"] += 1
+        domain_agg[domain]["tokens"] += s["total_tokens"]
+        domain_agg[domain]["cost"] += s["cost"]
+        domain_agg[domain]["hir_sum"] += s["hir"]
+        domain_agg[domain]["subagent_tokens"] += s["subagent_tokens"]
+        domain_agg[domain]["total_tokens_for_ratio"] += s["total_tokens"]
+
+    domains = []
+    for dname in sorted(domain_agg.keys(), key=lambda k: domain_agg[k]["cost"], reverse=True):
+        d = domain_agg[dname]
+        dn = max(d["sessions"], 1)
+        sr = d["subagent_tokens"] / max(d["total_tokens_for_ratio"], 1)
+        domains.append({"name": dname, "sessions": d["sessions"], "tokens": d["tokens"],
+                        "cost": round(d["cost"], 2), "hir": round(d["hir_sum"] / dn, 4),
+                        "subagent_ratio": round(sr, 4)})
+
+    # Project aggregation
+    project_agg = defaultdict(lambda: {"domain": "", "sessions": 0, "tokens": 0, "cost": 0.0})
+    for project_name, domain, _, s in sessions:
+        project_agg[project_name]["domain"] = domain
+        project_agg[project_name]["sessions"] += 1
+        project_agg[project_name]["tokens"] += s["total_tokens"]
+        project_agg[project_name]["cost"] += s["cost"]
+
+    projects = [{"name": pn, "domain": p["domain"], "sessions": p["sessions"],
+                 "tokens": p["tokens"], "cost": round(p["cost"], 2)}
+                for pn, p in sorted(project_agg.items(), key=lambda x: x[1]["cost"], reverse=True)]
+
+    # Costly sessions (top 25)
+    sorted_by_cost = sorted(sessions, key=lambda x: x[3]["cost"], reverse=True)[:25]
+    costly_sessions = [{"id": s["session_id"], "project": pn, "domain": dom, "cost": s["cost"],
+                        "tokens": s["total_tokens"], "hir": s["hir"], "frustration": s["frustration"],
+                        "first_prompt": s["first_prompt"], "date": s["date"]}
+                       for pn, dom, _, s in sorted_by_cost]
+
+    # Command frequency
+    cmd_counter = Counter()
+    for _, _, _, s in sessions:
+        for cmd in s["commands"]:
+            cmd_counter[cmd] += 1
+        for skill in s["skills"]:
+            cmd_counter[f"/{skill}"] += 1
+    command_frequency = dict(cmd_counter.most_common(50))
+
+    # Tool precision aggregated
+    tool_precision_by_name = defaultdict(list)
+    precision_weighted_sum = 0.0
+    precision_weight_total = 0
+    for _, _, _, s in sessions:
+        if s["tool_calls_total"] > 0:
+            precision_weighted_sum += s["tool_precision"] * s["tool_calls_total"]
+            precision_weight_total += s["tool_calls_total"]
+        for tname, prec in s["tool_precision_by_tool"].items():
+            tool_precision_by_name[tname].append(prec)
+
+    overall_precision = precision_weighted_sum / max(precision_weight_total, 1)
+    by_tool = {tname: round(sum(precs) / len(precs), 3) for tname, precs in tool_precision_by_name.items()}
+    tool_precision = {"overall": round(overall_precision, 4), "by_tool": by_tool}
+
+    # Context fills (top 10 longest)
+    sessions_with_context = [(pn, s) for pn, _, _, s in sessions if len(s["context_points"]) > 10]
+    sessions_with_context.sort(key=lambda x: len(x[1]["context_points"]), reverse=True)
+    context_fills = [{"session_id": s["session_id"], "project": pn, "points": s["context_points"]}
+                     for pn, s in sessions_with_context[:10]]
+
+    # Heatmap: date x hour -> tokens
+    heatmap = defaultdict(lambda: defaultdict(int))
+    for _, _, _, s in sessions:
+        if s["timestamp_start"]:
+            try:
+                ts = datetime.fromisoformat(s["timestamp_start"].replace("Z", "+00:00"))
+                day = ts.strftime("%Y-%m-%d")
+                hour = ts.strftime("%H")
+                heatmap[day][hour] += s["total_tokens"]
+            except (ValueError, AttributeError):
+                pass
+
+    # Frustration hotspots (score > 5)
+    frustration_hotspots = sorted(
+        [{"session_id": s["session_id"], "project": pn, "score": s["frustration"],
+          "triggers": s["frustration_triggers"][:5], "date": s["date"]}
+         for pn, _, _, s in sessions if s["frustration"] > 5],
+        key=lambda x: x["score"], reverse=True)
+
+    return {
+        "generated": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "range": range_label,
+        "total_projects_scanned": len(set(pn for pn, _, _, _ in sessions)),
+        "summary": summary,
+        "daily": daily,
+        "domains": domains,
+        "projects": projects,
+        "costly_sessions": costly_sessions,
+        "command_frequency": command_frequency,
+        "tool_precision": tool_precision,
+        "context_fills": context_fills,
+        "heatmap": {day: dict(hours) for day, hours in sorted(heatmap.items())},
+        "frustration_hotspots": frustration_hotspots,
+    }
+
+
+# ── HTML injection for file:// compatibility ──
+
+EMBED_START = '<!-- ANALYTICS_DATA_START -->'
+EMBED_END = '<!-- ANALYTICS_DATA_END -->'
+
+
+def inject_data_into_html(html_path, json_str):
+    """Inject JSON data into the dashboard HTML as window.__ANALYTICS_DATA__."""
+    html = html_path.read_text()
+    safe_json = json_str.replace('</', '<\\/')
+    script_block = f'{EMBED_START}\n<script>window.__ANALYTICS_DATA__ = {safe_json};</script>\n{EMBED_END}'
+
+    if EMBED_START in html:
+        start = html.index(EMBED_START)
+        end = html.index(EMBED_END) + len(EMBED_END)
+        html = html[:start] + script_block + html[end:]
+    else:
+        html = html.replace('</head>', f'{script_block}\n</head>')
+
+    html_path.write_text(html)
 
 
 # ── Main ──
@@ -407,170 +575,58 @@ def get_output_dir():
 
 
 def main():
-    print("Scanning projects...")
-    projects = analyze_all()
-    print(f"Found {len(projects)} projects")
+    print("Scanning projects...", file=sys.stderr)
+    all_sessions = []
 
-    summary = {
-        "total_cost": 0.0,
-        "total_sessions": 0,
-        "total_tokens": 0,
-        "avg_hir": 0.0,
-        "avg_frustration": 0.0,
-        "avg_tool_precision": 0.0,
-    }
-    daily = defaultdict(lambda: {"sessions": 0, "tokens": 0, "cost": 0.0, "hir": 0.0, "frustration": 0})
-    project_stats = []
-    costly_sessions = []
-    command_freq = defaultdict(int)
-    context_fills = []
-    heatmap = defaultdict(lambda: defaultdict(int))
+    if not PROJECTS_DIR.is_dir():
+        print(f"Error: {PROJECTS_DIR} not found", file=sys.stderr)
+        sys.exit(1)
 
-    all_hirs = []
-    all_frustrations = []
-    all_precisions = []
+    project_count = 0
+    for project_dir in sorted(PROJECTS_DIR.iterdir()):
+        if not project_dir.is_dir():
+            continue
+        project_count += 1
+        project_name = get_project_name(project_dir.name)
+        domain = get_domain(project_dir.name)
 
-    for project_name, sessions in projects.items():
-        proj_cost = 0.0
-        proj_tokens = 0
-        proj_sessions = len(sessions)
+        for jsonl_file in sorted(project_dir.glob("*.jsonl")):
+            session = parse_session_full(jsonl_file)
+            if session:
+                all_sessions.append((project_name, domain, project_dir.name, session))
 
-        for session in sessions:
-            cost = calculate_cost(session["usage"])
-            tokens = session["total_tokens"]
+    print(f"Found {project_count} projects, {len(all_sessions)} sessions", file=sys.stderr)
 
-            # Compute metrics
-            hir = compute_hir(session)
-            frustration = compute_frustration(session)
-            tool_prec = compute_tool_precision(session)
-            cmd_freq = compute_command_frequency(session)
-            subagent_eff = compute_subagent_efficiency(session)
-            ctx_fill = compute_context_fill(session)
+    data = build_data(all_sessions)
+    data["total_projects_scanned"] = project_count
 
-            all_hirs.append(hir["rate"])
-            all_frustrations.append(frustration)
-            all_precisions.append(tool_prec["precision"])
+    output_json = json.dumps(data, indent=2, ensure_ascii=False)
 
-            summary["total_cost"] += cost
-            summary["total_sessions"] += 1
-            summary["total_tokens"] += tokens
-            proj_cost += cost
-            proj_tokens += tokens
+    if "--stdout" in sys.argv:
+        print(output_json)
+    else:
+        output_dir = get_output_dir()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / "data.json"
+        with open(output_path, "w") as f:
+            f.write(output_json)
+        print(f"Written: {output_path}", file=sys.stderr)
 
-            # Daily aggregation
-            if session.get("timestamp_start"):
-                day = session["timestamp_start"][:10]
-                daily[day]["sessions"] += 1
-                daily[day]["tokens"] += tokens
-                daily[day]["cost"] += cost
-                daily[day]["hir"] += hir["rate"]
-                daily[day]["frustration"] += frustration
+        # Embed data into HTML for file:// compatibility
+        for html_name in ["analytics.html", "dashboard.html"]:
+            html_path = output_dir / html_name
+            if html_path.exists():
+                inject_data_into_html(html_path, output_json)
+                print(f"Embedded data into: {html_path}", file=sys.stderr)
 
-                # Heatmap: day-of-week x hour
-                try:
-                    ts = datetime.fromisoformat(session["timestamp_start"].replace("Z", "+00:00"))
-                    dow = ts.strftime("%a")
-                    hour = ts.hour
-                    heatmap[dow][hour] += tokens
-                except (ValueError, AttributeError):
-                    pass
-
-            # Costly sessions list
-            first_prompt = ""
-            if session["prompts"]:
-                first_prompt = session["prompts"][0]["text"][:200]
-            costly_sessions.append({
-                "project": project_name,
-                "session_id": session["session_id"],
-                "timestamp": session.get("timestamp_start", ""),
-                "tokens": tokens,
-                "cost": round(cost, 4),
-                "hir": hir["rate"],
-                "frustration": frustration,
-                "tool_precision": tool_prec["precision"],
-                "first_prompt": first_prompt,
-            })
-
-            # Command frequency
-            for cmd, count in cmd_freq.items():
-                command_freq[cmd] += count
-
-            # Context fills (keep top sessions by token count)
-            if ctx_fill:
-                context_fills.append({
-                    "session_id": session["session_id"],
-                    "project": project_name,
-                    "fill": ctx_fill,
-                })
-
-            # Remove raw lines to save memory before JSON output
-            session.pop("lines", None)
-
-        project_stats.append({
-            "project": project_name,
-            "sessions": proj_sessions,
-            "tokens": proj_tokens,
-            "cost": round(proj_cost, 4),
-        })
-
-    # Averages
-    if all_hirs:
-        summary["avg_hir"] = round(sum(all_hirs) / len(all_hirs), 4)
-    if all_frustrations:
-        summary["avg_frustration"] = round(sum(all_frustrations) / len(all_frustrations), 2)
-    if all_precisions:
-        summary["avg_tool_precision"] = round(sum(all_precisions) / len(all_precisions), 4)
-
-    summary["total_cost"] = round(summary["total_cost"], 2)
-
-    # Sort
-    costly_sessions.sort(key=lambda x: x["cost"], reverse=True)
-    project_stats.sort(key=lambda x: x["cost"], reverse=True)
-    context_fills.sort(key=lambda x: len(x["fill"]), reverse=True)
-
-    sorted_daily = []
-    for day in sorted(daily.keys()):
-        d = daily[day]
-        avg_hir = d["hir"] / d["sessions"] if d["sessions"] > 0 else 0
-        avg_frust = d["frustration"] / d["sessions"] if d["sessions"] > 0 else 0
-        sorted_daily.append({
-            "date": day,
-            "sessions": d["sessions"],
-            "tokens": d["tokens"],
-            "cost": round(d["cost"], 4),
-            "avg_hir": round(avg_hir, 4),
-            "avg_frustration": round(avg_frust, 2),
-        })
-
-    output = {
-        "generated": datetime.now(timezone.utc).isoformat(),
-        "range": f"last {SINCE_DAYS or 'all'} days",
-        "summary": summary,
-        "daily": sorted_daily,
-        "projects": project_stats,
-        "costly_sessions": costly_sessions[:20],
-        "command_frequency": dict(command_freq),
-        "context_fills": context_fills[:10],
-        "heatmap": {dow: dict(hours) for dow, hours in heatmap.items()},
-    }
-
-    output_path = get_output_dir() / "data.json"
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w") as f:
-        json.dump(output, f, indent=2)
-
-    print(f"\nAnalytics written to {output_path}")
-    print(f"\n--- Summary ---")
-    print(f"Sessions: {summary['total_sessions']}")
-    print(f"Total cost: ${summary['total_cost']:.2f}")
-    print(f"Avg HIR: {summary['avg_hir']:.2%}")
-    print(f"Avg Frustration: {summary['avg_frustration']:.1f}/10")
-    print(f"Avg Tool Precision: {summary['avg_tool_precision']:.2%}")
-
-    # Top commands
-    if command_freq:
-        top_cmds = sorted(command_freq.items(), key=lambda x: x[1], reverse=True)[:3]
-        print(f"Top commands: {', '.join(f'/{c} ({n})' for c, n in top_cmds)}")
+        s = data["summary"]
+        print(f"\nSummary:", file=sys.stderr)
+        print(f"  Cost: ${s['total_cost_usd']:.2f}", file=sys.stderr)
+        print(f"  Sessions: {s['total_sessions']}", file=sys.stderr)
+        print(f"  Tokens: {s['total_tokens']:,}", file=sys.stderr)
+        print(f"  Avg HIR: {s['avg_hir']:.3f}", file=sys.stderr)
+        print(f"  Avg Frustration: {s['avg_frustration']:.1f}", file=sys.stderr)
+        print(f"  Tool Precision: {s['avg_tool_precision']:.3f}", file=sys.stderr)
 
 
 if __name__ == "__main__":

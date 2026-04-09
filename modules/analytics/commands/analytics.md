@@ -20,14 +20,14 @@ SINCE_DAYS=${ARGUMENTS:-7} VAULT_PATH={{VAULT_PATH}} python3 {{VAULT_PATH}}/.cla
 open {{VAULT_PATH}}/00-Dashboard/dashboard.html
 ```
 
-3. **Report inline summary** from the engine stdout output:
-   - Total sessions analyzed
-   - Total estimated cost
+3. **Read data.json and report inline:**
+   - Total cost and sessions
    - Average HIR, Frustration Index, Tool Precision
-   - Top 3 most-used commands
+   - Top domain by cost
+   - Sessions with frustration > 5 (if any)
 
 ## Constraints
 
 - Engine runs in <10s for typical usage (7 days, <100 sessions)
-- Dashboard loads data.json via fetch(), no server needed
+- Engine embeds data into HTML for file:// compatibility (no server needed)
 - If no sessions found, report "No sessions found for the given range"
