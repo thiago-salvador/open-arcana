@@ -19,3 +19,15 @@ Thumbs.db
 node_modules/
 .cursor/
 Logo/
+
+# Python
+__pycache__/
+*.pyc
+
+# Claude Code local config
+.claude/
+.playwright-mcp/
+
+# Internal artifacts (PRDs, Specs) — never commit
+Spec.md
+docs/PRD-*.md
