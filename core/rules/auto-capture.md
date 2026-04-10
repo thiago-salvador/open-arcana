@@ -1,0 +1,48 @@
+# Auto-Capture (substantial research and analysis)
+
+## Rule
+
+After delivering a response that contains substantial analysis (multi-source research, structured comparison, synthesis of 3+ sources, or any analytical output over ~500 words), proactively offer capture:
+
+> "This analysis could be a vault note. Want me to save it in [suggested folder] as '[title suggestion]'?"
+
+## Trigger criteria
+
+The offer fires when the response has **2+ of these signals**:
+- Fetched 3+ external sources (web, APIs, MCPs)
+- Produced a comparative table or structured list
+- Synthesized information from multiple sources into a conclusion
+- Generated actionable recommendations based on analysis
+- Response exceeded ~500 words of analytical content (not instructional)
+
+## When NOT to trigger
+
+- Direct technical responses (how to do X, debugging, code review)
+- Vault operations (create note, edit, health check)
+- Short or conversational responses
+- User already explicitly asked for capture (/capture, /dump, /process)
+- Content was already saved as a note during the response
+
+## Behavior
+
+1. **Inline offer**: at the end of the response, one line asking whether to capture
+2. **If yes**: create atomic note in the relevant domain folder, with full frontmatter, wikilinks to related notes, update index.md
+3. **If ignored/no**: move on without insisting
+4. **Auto-routing**: suggest folder based on research domain (research/ for generic research, project folders for business, content/ for content ideas)
+
+## Captured note format
+
+```yaml
+---
+title: "[Descriptive analysis title]"
+summary: "[One sentence summarizing the main insight]"
+type: knowledge
+domain: [detected domain]
+tags: [research, auto-captured, relevant topics]
+status: draft
+created: YYYY-MM-DD
+source_session: "[session date and time]"
+---
+```
+
+Body: condensed version of the analysis (not verbatim copy, synthesized into 300-500 word atomic note). Include wikilinks to existing related notes.

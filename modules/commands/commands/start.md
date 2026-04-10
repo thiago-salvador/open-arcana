@@ -165,7 +165,14 @@ Group by project.
 
 With ALL data collected, perform the analysis:
 
-#### 3a. Delta report (what changed since LAST_COLLECTION)
+#### 3a. WIP check (session continuity)
+
+Read `00-Dashboard/wip.md`. If there are active workstreams:
+- Include in briefing as "Work in progress" (before the delta report)
+- If any workstream has a blocker: highlight as priority
+- If any workstream has no activity in 3+ days: flag as potentially stale
+
+#### 3b. Delta report (what changed since LAST_COLLECTION)
 
 Compare new data with what was in the previous Daily Note:
 - **New decisions** -- decisions made in meetings or chats that affect priorities
@@ -173,7 +180,7 @@ Compare new data with what was in the previous Daily Note:
 - **Context shifts** -- projects that gained or lost urgency
 - **Conflicts** -- overlapping meetings, conflicting deadlines, duplicate tasks
 
-#### 3b. Intelligent prioritization
+#### 3c. Intelligent prioritization
 
 Calculate priorities based on:
 1. **Time urgency** -- overdue or upcoming deadlines (< 3 days)
@@ -183,7 +190,7 @@ Calculate priorities based on:
 
 Generate a ranking of **Top 5 actions for today** with short justification.
 
-#### 3c. Today's meetings
+#### 3d. Today's meetings
 
 For each meeting today:
 - Context: what was discussed in the last meeting of this type?
@@ -263,8 +270,9 @@ TOP 5 FOCUS:
 1. [task] -- [short justification]
 2. ...
 
+WIP: [N active workstreams, blockers: N]
 SCAN (48h): N files outside vault
-HEALTH: vault ok / X issues
+HEALTH: [N/100] -- [classification]
 
 Daily Note created/updated.
 ```

@@ -32,7 +32,7 @@ Sync All -- YYYY-MM-DD
 
 Scan: [N] files modified, [N] not documented
 External syncs: [N] projects synced, [N] new
-Health: [score/10], [N] issues
+Health: [N/100] -- [classification]
 Connections: [N] new connections suggested
 
 Suggested next steps:

@@ -51,6 +51,22 @@ Add to Daily Note:
 
 This block is read by tomorrow's /start to ensure continuity.
 
+### 3.5. Update WIP (MANDATORY)
+
+Update `00-Dashboard/wip.md` with workstream state:
+- Workstreams that progressed today: update state and next step
+- New workstreams started: add to "Active workstreams"
+- Completed workstreams: move to "Recently archived"
+- Ideas/threads that emerged but were not started: add to "Parking lot"
+
+Format for each workstream:
+```markdown
+### [Workstream name] | domain | since YYYY-MM-DD
+**State:** {what was done, where it stopped}
+**Blocker:** {if any}
+**Next:** {concrete action to resume}
+```
+
 ### 4. Ask for validation (if interactive)
 
 If the user is present (not automated execution):

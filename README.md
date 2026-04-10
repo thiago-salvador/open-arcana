@@ -4,7 +4,7 @@
 
 Open Arcana turns your Obsidian vault into an AI-operated knowledge system. It gives Claude Code the rules, hooks, retrieval strategies, and automation commands it needs to actually work well with a vault, not just read and write files.
 
-Built from a production system running 16 hooks, 27 commands, and 500+ automated health checks daily.
+Built from a production system running 16 hooks, 27 commands, 500+ automated health checks, and a 0-100 vault health score daily.
 
 ## What's in the box
 
@@ -14,12 +14,12 @@ Built from a production system running 16 hooks, 27 commands, and 500+ automated
 | **Token Efficiency** | 17 rules for context window management and cost control. Cache awareness, retrieval budgets, output discipline. |
 | **Enforcement Hooks** | Auto-validates frontmatter, enforces daily notes, checks writes before they happen. |
 | **Security Hooks** | Blocks prompt injection in memory files, guards against fabricated people data. |
-| **Vault Structure** | Opinionated folder system with 18 note templates. One command creates the full tree. |
+| **Vault Structure** | Opinionated folder system with 19 note templates + WIP hub for session continuity. One command creates the full tree. |
 | **Retrieval System** | 4-layer lookup inspired by DeepSeek's Engram paper. Concept index, filtered grep, semantic search, fallback. |
 | **Slash Commands** | 22 commands: /start, /end, /weekly, /health, /dump, /capture, /distill, /recall, /tree, /model-review, and more. |
 | **Connected Sources** | Templates for orchestrating 16+ MCP data sources (Teams, Notion, Calendar, Read.AI, etc). |
 | **Scheduled Tasks** | Patterns for autonomous recurring agents: morning briefing, end-of-day, weekly review. |
-| **Vault Health** | 500+ automated checks for frontmatter, orphans, broken links, and index consistency. |
+| **Vault Health** | 7-component weighted health score (0-100) for frontmatter, index, MOCs, connections, daily notes, WIP, and memory. |
 | **Analytics Dashboard** | 6 behavioral metrics (HIR, frustration, tool precision, context fill, command frequency, subagent efficiency) + interactive HTML dashboard. |
 
 Every module is optional. Install what you need, skip what you don't.

@@ -2,6 +2,24 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.2.0] - 2026-04-10 -- Knowledge Compounding
+
+Inspired by analysis of Karpathy's LLM Wiki pattern (gist 442a6bf5) and production experience showing that research outputs were being lost between sessions.
+
+### Added
+- **Auto-capture rule** (`core/rules/auto-capture.md`): after delivering substantial analysis (3+ sources, comparative tables, 500+ word synthesis), the agent proactively offers to save it as a vault note. Routes to correct domain folder automatically.
+- **WIP hub** (`00-Dashboard/wip.md`): persistent work-in-progress state between sessions. Tracks active workstreams, blockers, next steps, and parking lot ideas. Different from Daily Notes (chronological log) and tasks (execution).
+- **WIP template** (`modules/vault-structure/templates/WIP.md`): scaffold creates wip.md automatically in 00-Dashboard/
+
+### Changed
+- **Health score**: expanded from qualitative "X/10" to **weighted 0-100 score** with 7 components: Frontmatter (25), Index (20), MOC (15), Connections (15), Daily Notes (10), WIP (5), Memory (10). Classification: Excellent/Good/Needs attention/Critical.
+- `/health`: updated output format with component breakdown table
+- `/end`: added mandatory step 3.5 (update WIP with workstream state)
+- `/start`: added step 3a (WIP check for session continuity, flag stale/blocked workstreams)
+- `/weekly`: added Vault Health Score section (0-100 with breakdown) and WIP Status section; fixed duplicate step 5 numbering (now 5/6/7)
+- `/sync-all`: health output updated from "score/10" to "N/100 -- classification"
+- `vault-structure`: 18 -> 19 templates, scaffold.sh creates wip.md
+
 ## [1.1.1] - 2026-04-09 -- Project Hygiene
 
 ### Added

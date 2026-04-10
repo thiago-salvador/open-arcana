@@ -62,6 +62,13 @@ EOF
   fi
 done
 
+# Create wip.md in 00-Dashboard if it doesn't exist
+if [ ! -f "$VAULT_PATH/00-Dashboard/wip.md" ]; then
+  sed "s/{{TODAY}}/$(date +%Y-%m-%d)/g" \
+    "$(dirname "$0")/templates/WIP.md" > "$VAULT_PATH/00-Dashboard/wip.md"
+  echo "  Created 00-Dashboard/wip.md"
+fi
+
 echo ""
 echo "Done. $((${#folders[@]})) folders created."
 echo "Next steps:"

@@ -12,7 +12,7 @@ These commands assume you have a working vault with the structure defined in the
 | `/end` | End-of-day wrap-up. Captures decisions, records current state (mandatory), processes unprocessed meetings, prepares tomorrow's agenda. | Yes |
 | `/weekly` | Weekly review. Reads 7 days of Daily Notes, collects task metrics, GitHub stats, memory health, anti-sycophancy metrics. Generates `00-Dashboard/Weekly Review.md`. | Yes |
 | `/recap` | Lightweight day summary. Read-only, no vault writes. Shows meetings, chats, emails, tasks, and sessions so far today. | No |
-| `/health` | Vault health audit. Checks frontmatter completeness, index.md coverage, MOC link integrity, orphan notes, Daily Note existence. Outputs score /10. | Yes |
+| `/health` | Vault health audit. 7-component weighted score (0-100): frontmatter, index, MOCs, connections, daily notes, WIP, memory. Classification: Excellent/Good/Needs attention/Critical. | Yes |
 | `/dump` | Brain dump with auto-routing. Accepts free text, classifies it (decision, bug, concept, meeting, person, content, action, project, partnership, event), routes to the correct folder, creates the note. | Minimal |
 | `/capture` | Post-session knowledge capture. Asks what to save (decision, bug fix, pattern, concept), creates an atomic note in the right location. | Yes |
 | `/process` | Turns raw material (transcripts, research, conversations) into atomic vault notes. Extracts decisions, action items, people, concepts. | Yes |

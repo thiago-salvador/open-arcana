@@ -230,16 +230,18 @@ If no findings: skip this section silently.
   - `### Dev Metrics` (GitHub table if there was activity)
   - `### Pending` (what was not completed)
   - `### Connections` (cross-domain patterns identified)
+  - `### Vault Health Score` (run /health and report score 0-100 with component breakdown)
+  - `### WIP Status` (read `00-Dashboard/wip.md`, list active, stale, and completed workstreams)
   - `### Token Economy` (result from check 3.5 -- tokens, cost, top projects, trend)
   - `### Memory Health` (result from check 3.6)
   - `### Anti-Sycophancy Metrics` (result from check 3.7)
   - `### User Model` (result from check 3.8, if findings exist)
   - `### Next week` (priority suggestions)
 
-### 5. Ask for validation
+### 6. Ask for validation
 - Show the summary and ask: "Does this reflect the week well? Want to adjust anything?"
 
-### 6. Output
+### 7. Output
 ```
 Weekly Review updated (YYYY-MM-DD to YYYY-MM-DD)
 Done: N items by domain
