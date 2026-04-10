@@ -2,6 +2,23 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.3.0] - 2026-04-10 -- Completion Tracking
+
+Closes the gap between data ingestion and action item tracking. When new information arrives, open items that were fulfilled are automatically resolved or flagged for review.
+
+### Added
+- **Completion tracking module** (`modules/completion-tracking/`): 2 rule files with 6 rules total (CT-1 to CT-3, CSR-1 to CSR-3)
+- **CT-1**: auto-mark `[x]` on meeting note checkboxes when items are completed
+- **CT-2**: update deliverables memory files when work is delivered
+- **CT-3**: end-of-session warning if significant work happened but no deliverable was updated
+- **CSR-1**: hybrid keyword+semantic reconciliation at data ingestion time
+- **CSR-2**: safety guardrails (max 5 auto-resolves, 30-day edit limit, evidence required)
+- **CSR-3**: direct user declaration triggers full resolve cycle
+
+### Changed
+- `/end`: added step 3.6 (reconciler: cross-reference session work against open action items)
+- `/post-meeting`: added step 3f (reconciler: cross-reference meeting content against previous action items)
+
 ## [1.2.0] - 2026-04-10 -- Knowledge Compounding
 
 Inspired by analysis of Karpathy's LLM Wiki pattern (gist 442a6bf5) and production experience showing that research outputs were being lost between sessions.

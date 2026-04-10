@@ -67,6 +67,16 @@ Format for each workstream:
 **Next:** {concrete action to resume}
 ```
 
+### 3.6. Reconciler: cross-reference session work against open action items
+
+Execute the reconciliation step defined in `completion-tracking/rules/cross-source-reconciler.md` (CSR-1):
+1. Read today's DN log (the work done in this session)
+2. Extract entities and fulfillment signals
+3. Load open action items (recent meeting notes + deliverables memory + task manager)
+4. Hybrid match (keyword first, semantic if needed)
+5. Auto-resolve HIGH, flag MEDIUM
+6. If no matches but significant work was done: apply CT-3 (warn user)
+
 ### 4. Ask for validation (if interactive)
 
 If the user is present (not automated execution):

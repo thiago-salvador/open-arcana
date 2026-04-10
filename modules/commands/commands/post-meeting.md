@@ -105,6 +105,14 @@ Add log entry:
   - {N} decisions, {N} action items, {N} tasks created
 ```
 
+#### 3f. Reconciler: cross-reference meeting content against open action items
+
+Execute CSR-1 (`completion-tracking/rules/cross-source-reconciler.md`):
+- The meeting content may resolve action items from PREVIOUS meetings (e.g., "we deployed the profile feature" resolves "QA and deploy public profiles")
+- Extract entities from the summary and topics
+- Match against open action items from other meeting notes
+- Auto-resolve HIGH, flag MEDIUM
+
 ### 4. Update indexes
 
 - `index.md` for each folder where notes were created
