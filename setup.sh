@@ -31,7 +31,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── Module registry (indexed arrays, bash 3.2 compatible) ─
-MODULE_KEYS=(anti-sycophancy token-efficiency enforcement-hooks security-hooks vault-structure retrieval-system commands connected-sources scheduled-tasks vault-health analytics)
+MODULE_KEYS=(anti-sycophancy token-efficiency enforcement-hooks security-hooks vault-structure retrieval-system commands connected-sources scheduled-tasks vault-health analytics scripts-offload)
 
 MODULE_NAMES=(
   "Anti-Sycophancy Protocol"
@@ -45,6 +45,7 @@ MODULE_NAMES=(
   "Scheduled Tasks"
   "Vault Health Checks"
   "Analytics Dashboard"
+  "Scripts Offload (Python)"
 )
 
 MODULE_DESCS=(
@@ -59,6 +60,7 @@ MODULE_DESCS=(
   "Templates for morning briefing, end-of-day, weekly review."
   "500+ automated checks for vault consistency."
   "6 behavioral metrics + local HTML dashboard from session data."
+  "9 Python scripts that replace ~100 tool calls with ~10."
 )
 
 MODULE_DESCS2=(
@@ -73,6 +75,7 @@ MODULE_DESCS2=(
   "Patterns for autonomous recurring agent tasks."
   "Frontmatter, orphans, broken links, index sync."
   "HIR, frustration, tool precision, context fill, commands, subagents."
+  "Health audit, stats, indexes, links, stale detection, concept index."
 )
 
 # Category grouping: indices into MODULE_KEYS
@@ -80,10 +83,10 @@ CAT_NAMES=("GUARDRAILS" "ENFORCEMENT" "VAULT MANAGEMENT" "AUTOMATION")
 CAT_INDICES_0="0 1"
 CAT_INDICES_1="2 3"
 CAT_INDICES_2="4 5"
-CAT_INDICES_3="6 7 8 9 10"
+CAT_INDICES_3="6 7 8 9 10 11"
 
 # Module activation state (Y/N), same order as MODULE_KEYS
-MODULE_ACTIVE=(Y Y Y Y Y Y Y Y Y Y Y)
+MODULE_ACTIVE=(Y Y Y Y Y Y Y Y Y Y Y Y)
 
 INSTALLED_FILES=0
 INSTALLED_HOOKS=0

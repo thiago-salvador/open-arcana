@@ -121,3 +121,22 @@ Example configurations for: morning briefing, end-of-day closure, and weekly rev
 Checks: frontmatter completeness, required fields, orphan detection, broken wikilinks, index.md sync, template compliance, domain tag validity, and more.
 
 Run with: `bash .vault-test.sh`
+
+### scripts-offload
+**9 Python scripts that replace ~100 tool calls with ~10.**
+
+The principle: scripts for computation, Claude for cognition. Instead of Claude reading dozens of files to check vault health, a single Python script scans everything and returns structured JSON.
+
+| Script | What it does | Flags |
+|--------|-------------|-------|
+| `_common.py` | Shared utilities (BOM, atomic write, vault validation, FM parsing) | -- |
+| `vault_health.py` | Audit score 0-100 with penalty breakdown | `--verbose`, `--vault` |
+| `vault_stats.py` | Stats by type/domain/status/tags + activity | `--vault` |
+| `rebuild_indexes.py` | Regenerate index.md for all folders | `--apply`, `--vault` |
+| `fix_frontmatter.py` | Add missing required FM fields | `--apply`, `--vault` |
+| `auto_linker.py` | Add wikilinks to isolated notes | `--apply`, `--vault` |
+| `broken_links.py` | Find [[links]] pointing to nonexistent notes | `--verbose`, `--vault` |
+| `concept_index.py` | Generate concept-index.md grouped by domain | `--apply`, `--vault` |
+| `stale_detector.py` | Find active notes unedited for N days | `--days N`, `--apply`, `--vault` |
+
+Replaces the `/health` and `/link-check` commands with script-backed versions. Configurable via environment variables (`VAULT_PATH`, `ARCANA_SKIP_DIRS`, `ARCANA_DOMAIN_MAP`, `ARCANA_MOC_MAP`). All `--apply` scripts use atomic writes and default to dry-run.

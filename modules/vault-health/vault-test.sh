@@ -549,11 +549,89 @@ test5_tasks() {
 }
 
 # ============================================================
+# TEST 6: SCRIPTS OFFLOAD
+# Python scripts installed, produce valid JSON, consistent scores
+# ============================================================
+test6_scripts() {
+    echo -e "${BLUE}=== Test 6: Scripts Offload ===${NC}"
+    local pass=0
+    local fail=0
+    local total=0
+
+    local tools_dir="$VAULT/.claude/tools"
+
+    # Check scripts are installed
+    local required_scripts=("_common.py" "vault_health.py" "vault_stats.py" "rebuild_indexes.py" "fix_frontmatter.py" "auto_linker.py" "broken_links.py" "concept_index.py" "stale_detector.py")
+    for s in "${required_scripts[@]}"; do
+        total=$((total + 1))
+        if [ -f "$tools_dir/$s" ]; then
+            pass=$((pass + 1))
+        else
+            echo -e "  ${RED}MISSING${NC}: $s not installed in .claude/tools/"
+            fail=$((fail + 1))
+        fi
+    done
+
+    # Check Python is available
+    total=$((total + 1))
+    if command -v python3 &>/dev/null; then
+        pass=$((pass + 1))
+    else
+        echo -e "  ${RED}NO PYTHON${NC}: python3 not found in PATH"
+        fail=$((fail + 1))
+        local score=0
+        if [ $total -gt 0 ]; then
+            score=$(echo "scale=1; $pass * 100 / $total" | bc)
+        fi
+        echo -e "  ${GREEN}Result${NC}: $pass/$total checks passed (${score}%)"
+        echo "$score"
+        return
+    fi
+
+    # Check each script produces valid JSON (dry-run)
+    local json_scripts=("vault_health.py" "vault_stats.py" "rebuild_indexes.py" "fix_frontmatter.py" "auto_linker.py" "broken_links.py" "concept_index.py" "stale_detector.py")
+    for s in "${json_scripts[@]}"; do
+        [ ! -f "$tools_dir/$s" ] && continue
+        total=$((total + 1))
+        local out
+        out=$(VAULT_PATH="$VAULT" python3 "$tools_dir/$s" 2>&1)
+        if echo "$out" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+            pass=$((pass + 1))
+        else
+            echo -e "  ${RED}INVALID JSON${NC}: $s"
+            fail=$((fail + 1))
+        fi
+    done
+
+    # Check vault_health score is reasonable (0-100)
+    if [ -f "$tools_dir/vault_health.py" ]; then
+        total=$((total + 1))
+        local health_out
+        health_out=$(VAULT_PATH="$VAULT" python3 "$tools_dir/vault_health.py" 2>&1)
+        local health_score
+        health_score=$(echo "$health_out" | python3 -c "import sys,json; print(json.load(sys.stdin).get('health_score', -1))" 2>/dev/null || echo "-1")
+        if [ "$health_score" -ge 0 ] && [ "$health_score" -le 100 ] 2>/dev/null; then
+            pass=$((pass + 1))
+        else
+            echo -e "  ${RED}BAD SCORE${NC}: vault_health returned $health_score (expected 0-100)"
+            fail=$((fail + 1))
+        fi
+    fi
+
+    local score=0
+    if [ $total -gt 0 ]; then
+        score=$(echo "scale=1; $pass * 100 / $total" | bc)
+    fi
+    echo -e "  ${GREEN}Result${NC}: $pass/$total checks passed (${score}%)"
+    echo "$score"
+}
+
+# ============================================================
 # COMPOSITE SCORE
 # ============================================================
 composite() {
-    local t1=$1 t2=$2 t3=$3 t4=$4 t5=$5
-    local score=$(echo "scale=1; ($t1 * 0.30) + ($t2 * 0.25) + ($t3 * 0.20) + ($t4 * 0.15) + ($t5 * 0.10)" | bc)
+    local t1=$1 t2=$2 t3=$3 t4=$4 t5=$5 t6=${6:-0}
+    local score=$(echo "scale=1; ($t1 * 0.25) + ($t2 * 0.20) + ($t3 * 0.20) + ($t4 * 0.15) + ($t5 * 0.10) + ($t6 * 0.10)" | bc)
     echo "$score"
 }
 
@@ -593,14 +671,20 @@ if [ "$1" = "all" ] || [ -z "$1" ]; then
     echo "$t5_output" | sed '$d'
     echo ""
 
+    t6_output=$(test6_scripts)
+    t6_score=$(echo "$t6_output" | tail -1)
+    echo "$t6_output" | sed '$d'
+    echo ""
+
     echo "=================================="
     printf "  Test 1 (Retrieval):    %s%%\n" "$t1_score"
     printf "  Test 2 (Integrity):    %s%%\n" "$t2_score"
     printf "  Test 3 (Consistency):  %s%%\n" "$t3_score"
     printf "  Test 4 (Freshness):    %s%%\n" "$t4_score"
     printf "  Test 5 (Tasks):        %s%%\n" "$t5_score"
+    printf "  Test 6 (Scripts):      %s%%\n" "$t6_score"
     echo "=================================="
-    composite=$(echo "scale=1; ($t1_score * 0.30) + ($t2_score * 0.25) + ($t3_score * 0.20) + ($t4_score * 0.15) + ($t5_score * 0.10)" | bc)
+    composite=$(echo "scale=1; ($t1_score * 0.25) + ($t2_score * 0.20) + ($t3_score * 0.20) + ($t4_score * 0.15) + ($t5_score * 0.10) + ($t6_score * 0.10)" | bc)
     printf "  VAULT SCORE: %s\n" "$composite"
     echo "=================================="
     echo ""
@@ -613,6 +697,7 @@ else
         test3) test3_consistency ;;
         test4) test4_freshness ;;
         test5) test5_tasks ;;
-        *) echo "Usage: bash vault-test.sh [test1|test2|test3|test4|test5|all]" ;;
+        test6) test6_scripts ;;
+        *) echo "Usage: bash vault-test.sh [test1|test2|test3|test4|test5|test6|all]" ;;
     esac
 fi
