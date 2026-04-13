@@ -2,6 +2,43 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.5.0] - 2026-04-13 -- Domain Scoping
+
+Prevents cross-domain contamination in alert responses. Alerts now carry a domain tag so the agent filters by context instead of dumping everything.
+
+### Added
+- **Domain-scoping rule** (`modules/vault-structure/rules/domain-scoping.md`): DS-1 (domain-specific responses must filter by domain) and DS-2 (alert domain tag filtering). Generic domains: work, personal, content, research, partnerships, speaking.
+- **Alert domain support** (`core/hooks/alert.sh`): new 4-arg format `alert.sh <priority> <source> <domain> <message>` with backward-compatible 3-arg legacy fallback (defaults to `personal`). Invalid domains also default to `personal`.
+- Domain-grouped display in `read-alerts.sh`: alerts organized by domain with uppercase headers, urgent count banner, and legacy fallback section ("GENERAL") for untagged alerts.
+
+### Changed
+- `core/hooks/read-alerts.sh`: rewritten from flat display to domain-grouped output with macOS-compatible domain extraction (no `grep -P`)
+- `modules/completion-tracking/rules/cross-source-reconciler.md`: reconciler candidate format now includes domain tag and emoji (`🔄 **[reconcile-candidate]** \`<domain>\` YYYY-MM-DD`)
+
+## [1.4.0] - 2026-04-11 -- Scripts Offload
+
+Replaces ~100 tool calls per session with ~10 by offloading vault computation to Python scripts. The principle: scripts for computation, Claude for cognition.
+
+### Added
+- **Scripts offload module** (`modules/scripts-offload/`): 9 Python scripts + 2 rewritten commands
+- `_common.py`: shared utilities (BOM handling, atomic writes, vault validation, FM parsing)
+- `vault_health.py`: health audit score 0-100 with penalty breakdown
+- `vault_stats.py`: stats by type/domain/status/tags + activity overview
+- `rebuild_indexes.py`: regenerate index.md for all folders (idempotent)
+- `fix_frontmatter.py`: add missing required FM fields (idempotent)
+- `auto_linker.py`: add wikilinks to isolated notes
+- `broken_links.py`: find broken [[links]] with did-you-mean suggestions
+- `concept_index.py`: generate concept-index.md grouped by domain
+- `stale_detector.py`: find active notes unedited for N days
+- Rewritten `/health` command using script-backed JSON output
+- Rewritten `/link-check` command using script-backed JSON output
+- Test 6 (Scripts) added to `vault-test.sh` (installation + JSON validity checks)
+- All scripts configurable via env vars (`VAULT_PATH`, `ARCANA_SKIP_DIRS`, `ARCANA_DOMAIN_MAP`, `ARCANA_MOC_MAP`)
+
+### Changed
+- `vault-test.sh`: composite score now includes Test 6 (Scripts Offload), weights rebalanced
+- `setup.sh`: registered scripts-offload as module 12 in AUTOMATION category
+
 ## [1.3.0] - 2026-04-10 -- Completion Tracking
 
 Closes the gap between data ingestion and action item tracking. When new information arrives, open items that were fulfilled are automatically resolved or flagged for review.

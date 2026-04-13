@@ -14,7 +14,7 @@ After processing new data from any source (chat messages, emails, meeting transc
    - 3b. If keyword = 0 matches AND fulfillment signals are present: semantic search via Smart Connections (max 3 results). Semantic match = confidence MEDIUM.
 4. **ACT** based on confidence:
    - **HIGH:** auto-resolve. Mark `[x]` in the meeting note (if <30 days, per CT-1). Move to "Delivered" in deliverables memory (per CT-2). If a task manager MCP is available, update task status to done. Log in DN: `[auto-reconciled] "item" <- source (confidence: high)`
-   - **MEDIUM/LOW:** flag for review. Add entry to `00-Dashboard/alerts.md`. Log in DN: `[reconcile-candidate] "item" <- source (confidence: medium)`. Do not change anything until the user confirms.
+   - **MEDIUM/LOW:** flag for review. Add entry to `00-Dashboard/alerts.md` section `## Reconciler Candidates`, with domain tag. Format: `- 🔄 **[reconcile-candidate]** \`<domain>\` YYYY-MM-DD — "action item" <- source [confidence: medium, source: log]`. Domain: determine from the action item's origin (meeting note folder, project context, etc.). Do not change anything until the user confirms.
 5. **LOG** results. If zero matches: silence (do not pollute the DN).
 
 ## CSR-2. Safety guardrails
