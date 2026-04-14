@@ -2,6 +2,34 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.6.0] - 2026-04-14 -- Adaptive Review System
+
+Turn-deferred background review system inspired by NousResearch/hermes-agent. Adaptive thresholds learn from review outcomes. FTS5 SQLite session index with entity extraction and note linking.
+
+### Added
+
+- **Background review command** (`modules/commands/commands/background-review.md`): turn-deferred review invoked when iteration counter crosses threshold. Three embedded prompt templates (Distill/Skill, Memory, Combined+Vault Hygiene) each with explicit "Nothing to save" escape for anti-gold-plating. Step 6 records outcome to `~/.claude/review-history.json` for adaptive threshold feedback loop.
+- **Iteration counter hook** (`modules/enforcement-hooks/hooks/iteration-counter.sh`): PostToolUse wildcard matcher. Tracks `per_turn`, `cumulative`, and `struggle_signals` in `/tmp/claude-iter-state-YYYYMMDD.json`. Uses `fcntl.flock(LOCK_EX)` for atomic updates under concurrent hook firings.
+- **Turn boundary check hook** (`modules/enforcement-hooks/hooks/turn-boundary-check.sh`): UserPromptSubmit hook. Reads state, applies adaptive thresholds, emits flag file. Default thresholds: distill=8, struggle=5, cumulative=15. Adaptive rules: 5x "nothing" outcomes raises (+2/+1/+5, ceiling 14/9/25), 5x "acted" lowers (-1/-1/-3, floor 4/3/10).
+- **Session index v3** (`tools/session_index.py` rewrite): FTS5 SQLite virtual table with BM25 + date decay ranking. New tables: `entities` (person via regex on `PEOPLE_DIR/*.md`, project via `PROJECT_PATH_MAP`) and `session_notes` (tool_use events for Read/Write/Edit/MultiEdit filtered to vault root). Canonical name normalization prevents case drift ("JOHN SMITH" → "John Smith"). Schema migration v1/v2 → v3 automatic drop+rebuild on version mismatch.
+- **Recall command v3** (`modules/commands/commands/recall.md` rewrite): FTS5 search with `--entity type:name` filter, `--notes` for touched-notes listing, `--limit N`, `--json` output. New subcommands: `entities <type> [filter]`, `notes <path-substring>`, `stats`.
+
+### Changed
+
+- `tools/session_index.py`: v1 (grep-on-JSONL) → v3 (FTS5 SQLite with entity extraction + note linking). Legacy JSONL+MD outputs preserved as grep fallback. New env vars: `PEOPLE_DIR`, `PROJECT_PATH_MAP`, `DB_PATH`, `DECAY_ALPHA`. Backward-compat: `--incremental` flag still accepted.
+- `modules/enforcement-hooks/README.md`: documented new `iteration-counter.sh` and `turn-boundary-check.sh` hooks + updated installation JSON with `UserPromptSubmit` block and `matcher: ""` PostToolUse entry.
+
+### Architecture notes
+
+The adaptive review system ports 4 features from Hermes Agent (NousResearch) to Open Arcana, with 4 improvements over the baseline:
+
+1. **Date decay in BM25 ranking** (Hermes FTS5 uses raw BM25 only)
+2. **Signal-based distill trigger**: threshold drops from 8 to 5 when 2+ struggle signals detected in a turn
+3. **Vault-aware review templates** with checks for people folder, MOCs, index.md, decision records (Hermes is code-focused)
+4. **"Nothing to save" escape** explicit in all 3 templates (Hermes has it only in prompt tail)
+
+Validated in production on a 389-session vault with 248/248 tests passing across 5 suites. Two real bugs caught during porting and fixed upstream: (1) entity case drift normalized via canonical map, (2) race condition on state file fixed with fcntl lock.
+
 ## [1.5.0] - 2026-04-13 -- Domain Scoping
 
 Prevents cross-domain contamination in alert responses. Alerts now carry a domain tag so the agent filters by context instead of dumping everything.
