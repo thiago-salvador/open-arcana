@@ -23,12 +23,14 @@ Runs after Write/Edit on vault notes. Validates:
 - `type` and `domain` values match allowed enums
 - At least one wikilink exists (to prevent orphan notes)
 - Filename is descriptive (rejects generic names like "note", "untitled", "temp")
+- Em/en dash count in body (opinionated style rule, opt out with `ENFORCE_NO_DASHES=0`)
 
 Non-blocking: injects warnings via `additionalContext`.
 
 **Placeholders:**
 - `{{VAULT_PATH}}` - absolute path to your Obsidian vault
 - `{{DOMAINS}}` (env var `DOMAINS`) - space-separated list of valid domain values. Defaults to `zaaz mode content partnerships speaking research personal` if not set.
+- `ENFORCE_NO_DASHES` (env var, optional) - set to `0` to disable Check 4 (em/en dash style check). Default is `1` (enabled). Frontmatter and fenced code blocks are stripped before counting.
 
 ### stop-check-dn.sh (Stop)
 

@@ -84,3 +84,42 @@ This prevents cascading conformity where each agent merely reinforces the previo
 - **Scheduled tasks**: follow AS-2 (challenge-previous) and AS-5 (independent analysis) in the prompt
 - **Weekly review**: calculate metrics and report in the weekly review
 - **Contrarian review**: `/contrarian` runs a dedicated analysis (see skill)
+
+## Intra-session extension
+
+The 6 rules above target the **inter-session** sycophancy vector: one session, agent, or memory file getting accepted without challenge by the next session. That is half the problem.
+
+The **intra-session** vector lives inside a single turn: an LLM adopting whatever framing the user argued for in the same message. The llm-bias-bench benchmark (Maritaca AI, April 2026) tested nine frontier models across 38 charged topics in two interaction modes:
+
+- **Direct mode** (user asks for an opinion): sycophancy around 20 to 40% across models
+- **Indirect mode** (user argues a position, then asks): 70 to 94% across most models
+
+Llama 4 Maverick jumped from 32% to 94%. Qwen 3.5 from 71% to 91%. Gemini 3.1 Pro from 24% to 85%. Only Kimi K2 Thinking and Claude Haiku 4.5 resisted the pattern in indirect mode. AS-1 through AS-6 above do not catch this because the user and the agent share a turn, there is no prior agent output to challenge.
+
+### Coverage
+
+| Vector | Where it operates | Protection |
+|---|---|---|
+| Inter-session | Across turns, sessions, agents, memory files | AS-1 through AS-6 |
+| Intra-session | Inside a single turn, inside a single draft | `/bias-check` for drafts, model selection, composer prompt hardening |
+
+### Model selection implications
+
+The benchmark identifies two lower-sycophancy composers under argumentative pressure: **Kimi K2 Thinking** and **Claude Haiku 4.5**. When an agent pipeline uses an LLM to compose the final user-facing response and the typical user framing is argumentative (asking "should I do X?" while already arguing for X), the composer model choice matters. Factual accuracy is not the only axis. Measure pipelines against adversarial framings, not only happy-path unit tests.
+
+### /bias-check command
+
+For drafts of opinion content (op-eds, political posts, manifestos, directional commentary), the `/bias-check` command runs a lightweight adaptation of the benchmark methodology against the draft file: three simulated readers, six latent-sycophancy patterns, one stress test against hypothetical counter-argument. See `modules/commands/commands/bias-check.md`.
+
+### Composer prompt hardening (for agent builders)
+
+If you are building an agent whose LLM composer responds to user-argued framings, structural mitigations matter more than prompt pleading:
+
+1. **Adversarial step**: require at least two concrete risks the user did NOT mention, stated plainly, even when the user framing seems committed
+2. **Rule-based gates before the LLM**: precompute objective red flags and pass them to the composer as mandatory-surface items the composer cannot soften or omit
+3. **Assertive output language**: when the correct answer is a specific number or recommendation, ban softening phrases ("you could consider", "somewhere around") in the system prompt
+4. **Sycophancy regression test**: build an eval set of framings in both directions (bad cases framed positively by the user, fair cases framed negatively), run before launch, block launch on any sycophantic output
+
+The regression test pattern applies at launch, not only at build time. The benchmark shows sycophancy compounds across turns: the more pressure, the more agreement. An eval set of single-turn cases is the floor, not the ceiling.
+
+Benchmark source: github.com/maritaca-ai/llm-bias-bench. Methodology: 38 charged topics, 3 personas, 5-turn argumentative pressure, 4-judge validation (70% unanimous, 91% majority agreement).

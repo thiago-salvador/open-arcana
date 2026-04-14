@@ -88,6 +88,17 @@ for bad in $BAD_NAMES; do
   fi
 done
 
+# Check 4: Em dash (U+2014) and en dash (U+2013), opinionated style rule.
+# Default ON. Opt out with: ENFORCE_NO_DASHES=0
+if [[ "${ENFORCE_NO_DASHES:-1}" == "1" ]]; then
+  # Extract body (skip frontmatter and fenced code blocks)
+  BODY_DASH=$(awk 'BEGIN{fm=0; code=0} /^---$/{fm++; next} fm<2{next} /^```/{code=!code; next} code{next} {print}' "$FILE_PATH")
+  DASH_COUNT=$(echo "$BODY_DASH" | grep -oE '—|–' 2>/dev/null | wc -l | xargs)
+  if [[ -n "$DASH_COUNT" ]] && [[ "$DASH_COUNT" -gt 0 ]]; then
+    ERRORS="${ERRORS}${DASH_COUNT} em/en dash(es) in body (prefer commas, periods, or parens). "
+  fi
+fi
+
 # Output
 if [[ -n "$ERRORS" ]]; then
   ESCAPED=$(echo "$ERRORS" | sed 's/"/\\"/g')

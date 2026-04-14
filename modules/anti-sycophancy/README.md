@@ -41,6 +41,14 @@ This prevents cascading conformity where each agent just reinforces the last.
 - When re-verification finds the memory is still valid, mark it `[re-verified: YYYY-MM-DD]`
 - When re-verification finds divergence, create a ConflictReport
 
+## Intra-session extension (v1.7.0)
+
+AS-1 through AS-6 cover the inter-session vector: accepting output from another session, agent, or memory file without challenge. A second vector operates inside a single turn: an LLM adopting whatever framing the user argued for in the same message.
+
+The llm-bias-bench benchmark (Maritaca AI, April 2026) found sycophancy jumps from around 20 to 40% in direct mode to 70 to 94% in indirect mode across most frontier models. AS-1 through AS-6 do not catch this because there is no prior agent output to challenge inside a single turn.
+
+For opinion-content drafts, use the `/bias-check` command in the commands module. For agent pipelines with user-argued framings, see the model selection and composer prompt hardening guidance in `rules/anti-sycophancy.md` under "Intra-session extension".
+
 ## Metrics
 
 | Metric | Measures | Red flag |

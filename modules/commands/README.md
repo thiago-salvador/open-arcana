@@ -20,7 +20,8 @@ These commands assume you have a working vault with the structure defined in the
 | `/sync-all` | Full sync: file scan + external project syncs + health check + connection discovery. Best for start of the week or returning after time away. | Yes |
 | `/connections` | Discovers cross-domain connections via semantic search. Finds non-obvious links between domains and categorizes them as actions, context enrichment, or productive tensions. | Yes |
 | `/link-check` | Cross-linker. Scans recent notes and inserts missing wikilinks by exact match against vault note names, aliases, and people. Supports dry-run mode. | No |
-| `/contrarian` | Anti-sycophancy analysis. Searches for excessive agreement, unverified facts, stale memories, and missing divergences. Produces a structured report with metrics. | No |
+| `/contrarian` | Anti-sycophancy analysis across sessions. Searches for excessive agreement, unverified facts, stale memories, and missing divergences. Produces a structured report with metrics. | No |
+| `/bias-check` | Bias and latent-sycophancy check for opinion drafts. Runs the text against three simulated readers (neutral, agrees, disagrees) and flags where it would cave under hypothetical pushback. Six latent-sycophancy patterns plus one stress test. Lightweight adaptation of llm-bias-bench. | Minimal |
 | `/audit-gaps` | Detects vault gaps: uncatalogued people, projects without notes, action items without tasks, decisions without records. Scans external sources and compares. | Yes |
 | `/post-meeting` | Processes meeting transcripts into vault notes. Creates decision records, extracts action items as tasks, updates person notes and indexes. | No |
 | `/person` | Person briefing. Pulls complete context from vault, team chat, meeting transcripts, calendar, task manager, and LinkedIn. Offers to create a person note if missing. | Yes |

@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Open Arcana Setup Wizard
 # Compatible with bash 3.2+ (macOS default)
-VERSION="1.0.6"
+VERSION="1.7.0"
 
 # ── Colors & Styles ───────────────────────────────────────
 BOLD=$'\033[1m'

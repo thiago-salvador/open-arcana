@@ -2,6 +2,38 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.7.0] - 2026-04-14 -- Intra-Session Sycophancy Protection
+
+Second-vector coverage for the anti-sycophancy system. AS-1 through AS-6 protect against inter-session sycophancy (one session accepting prior output without challenge). This release adds protection against intra-session sycophancy (an LLM adopting whatever framing the user argued for in the same turn), grounded in the llm-bias-bench benchmark (Maritaca AI, April 2026).
+
+### Added
+
+- **`/bias-check` command** (`modules/commands/commands/bias-check.md`): bias and latent-sycophancy check for opinion drafts. Runs a draft against three simulated readers (neutral, agrees, disagrees) and flags where the text would cave under hypothetical pushback. Six latent-sycophancy patterns (excessive hedging, false balance, agreement-tuned tone, missing strong counter-argument, one-sided evidence, call-to-action without cost) plus one stress test against a hypothetical counter-argument. Verdict in three buckets: honest, latent light, latent significant.
+- **Intra-session extension** in `modules/anti-sycophancy/rules/anti-sycophancy.md`: documents the two-vector framework, the llm-bias-bench findings, model selection guidance (Kimi K2 Thinking and Claude Haiku 4.5 as lower-sycophancy composers under argumentative pressure), and four composer prompt hardening patterns for agent builders (adversarial step, rule-based gates, assertive output language, sycophancy regression test).
+- **Em/en dash check** in `modules/enforcement-hooks/hooks/validate-write.sh` (Check 4): opinionated style rule enabled by default, opt out with `ENFORCE_NO_DASHES=0` env var. Counts em dashes (U+2014) and en dashes (U+2013) in body (frontmatter and fenced code blocks stripped) and warns when present. Non-blocking, warning injected via `additionalContext`.
+
+### Changed
+
+- `modules/commands/README.md`: added `/bias-check` row to the commands table, refined `/contrarian` description to clarify it covers inter-session sycophancy.
+- `modules/anti-sycophancy/README.md`: added intra-session extension section linking to `/bias-check` and the full rule file.
+- `modules/enforcement-hooks/README.md`: documented Check 4 (em/en dash) and the `ENFORCE_NO_DASHES` env var in the validate-write.sh section.
+
+### Fixed
+
+- `setup.sh` `VERSION` variable bumped from `1.0.6` to `1.7.0`. The variable was stale from before the v1.1.0 release and was never updated along with subsequent CHANGELOG entries. The wizard banner and installation receipts now report the correct version.
+
+### Architecture notes
+
+The llm-bias-bench benchmark tested nine frontier models across 38 commercially and politically charged topics in two interaction modes. Direct mode (user asks for an opinion) produced sycophancy rates around 20 to 40% across models. Indirect mode (user argues a position, then asks for validation) pushed those rates to 70 to 94%. Llama 4 Maverick jumped from 32% to 94%, Qwen 3.5 from 71% to 91%, Gemini 3.1 Pro from 24% to 85%. Only Kimi K2 Thinking and Claude Haiku 4.5 resisted the pattern.
+
+The cross-session rules AS-1 through AS-6 do not catch this because the user and the agent share a single turn with no prior agent output to challenge. The intra-session extension fills that gap with three different defenses depending on the context:
+
+1. **For opinion content drafts**: `/bias-check` runs a lightweight adaptation of the benchmark methodology against the draft file, catching latent sycophancy before publishing.
+2. **For agent pipelines with user-argued framings**: the rule file documents structural mitigations (adversarial step, rule-based gates, assertive output language, regression eval sets).
+3. **For vault-level content enforcement**: Check 4 in validate-write.sh catches em/en dashes as one common style-level signal of soft punctuation, independently of content analysis.
+
+Benchmark source: github.com/maritaca-ai/llm-bias-bench. Methodology: 38 topics, 3 personas, 5-turn argumentative pressure, 4-judge validation (70% unanimous, 91% majority agreement).
+
 ## [1.6.0] - 2026-04-14 -- Adaptive Review System
 
 Turn-deferred background review system inspired by NousResearch/hermes-agent. Adaptive thresholds learn from review outcomes. FTS5 SQLite session index with entity extraction and note linking.
