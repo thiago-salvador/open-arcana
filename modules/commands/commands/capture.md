@@ -20,9 +20,11 @@ Ask:
 Depending on the type:
 - **Technical decision** -> create in the project's folder using Decision Record template
 - **Bug fix** -> create in the project's errors folder using Error Solution template
-- **Pattern/concept** -> create in the relevant domain folder
-- **Rule/convention** -> create in `85-Rules/`
+- **Pattern/concept** -> create in the relevant domain folder (include `reviewed: false` in frontmatter)
+- **Rule/convention** -> create in `85-Rules/` (type=reference, include `reviewed: false`)
 - **Project update** -> update note in `15-Projects/`
+
+For notes with `type: concept | knowledge | reference`, ALWAYS include `reviewed: false` in frontmatter. The validation hook warns if missing. The user flips to `true` when they review the note manually.
 
 ### 3. Update context
 - Update `index.md` of the modified folder

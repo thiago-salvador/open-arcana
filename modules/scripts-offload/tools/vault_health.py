@@ -21,6 +21,7 @@ from _common import (
 
 VERBOSE = "--verbose" in sys.argv
 REQUIRED_FIELDS = {"title", "summary", "type", "domain", "tags", "status", "created"}
+REVIEWED_TYPES = {"concept", "knowledge", "reference"}
 
 
 def main():
@@ -43,6 +44,13 @@ def main():
     missing_fm = 0
     missing_fields_total = 0
     fm_issues = []
+
+    # Validation gate tracking (reviewed field on knowledge-producing types)
+    reviewed_true = 0
+    reviewed_false = 0
+    reviewed_missing = 0
+    reviewed_eligible_total = 0
+    reviewed_missing_files = []
 
     for n in notes:
         rel = str(n.relative_to(VAULT))
@@ -77,6 +85,25 @@ def main():
         if d and d not in VALID_DOMAINS:
             if VERBOSE:
                 fm_issues.append(f"{rel}: invalid domain '{d}'")
+
+        # Validation gate: track reviewed field on knowledge-producing types
+        if t in REVIEWED_TYPES:
+            reviewed_eligible_total += 1
+            reviewed_raw = fm.get("reviewed")
+            if reviewed_raw is None:
+                reviewed_missing += 1
+                if VERBOSE and len(reviewed_missing_files) < 30:
+                    reviewed_missing_files.append(rel)
+            else:
+                reviewed_str = str(reviewed_raw).strip().lower().strip('"').strip("'")
+                if reviewed_str == "true":
+                    reviewed_true += 1
+                elif reviewed_str == "false":
+                    reviewed_false += 1
+                else:
+                    reviewed_missing += 1
+                    if VERBOSE and len(reviewed_missing_files) < 30:
+                        reviewed_missing_files.append(f"{rel} (invalid value: {reviewed_raw})")
 
     # 3. Orphan detection (no incoming wikilinks)
     linked = set()
@@ -143,6 +170,11 @@ def main():
     idx_pen = min(len(missing_indexes) * 3, 15)
     score = max(0, score - fm_pen - field_pen - orphan_pen - iso_pen - idx_pen)
 
+    # Validation gate pct (non-scoring, reporting only)
+    reviewed_pct = None
+    if reviewed_eligible_total > 0:
+        reviewed_pct = round(100.0 * reviewed_true / reviewed_eligible_total, 1)
+
     result = {
         "health_score": score,
         "total_notes": total,
@@ -153,6 +185,14 @@ def main():
             "orphan_notes": len(orphans),
             "isolated_notes": len(isolated),
             "folders_without_index": len(missing_indexes),
+        },
+        "validation_gate": {
+            "eligible_types": sorted(REVIEWED_TYPES),
+            "eligible_total": reviewed_eligible_total,
+            "reviewed_true": reviewed_true,
+            "reviewed_false": reviewed_false,
+            "reviewed_missing": reviewed_missing,
+            "reviewed_pct": reviewed_pct,
         },
         "score_breakdown": {
             "frontmatter_penalty": -fm_pen,
@@ -169,6 +209,7 @@ def main():
             "orphans": orphans[:30],
             "isolated": isolated[:30],
             "missing_indexes": missing_indexes,
+            "reviewed_missing": reviewed_missing_files,
         }
 
     print(json.dumps(result, indent=2, ensure_ascii=False))

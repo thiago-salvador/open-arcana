@@ -37,7 +37,7 @@ DEFAULT_STRUGGLE = 5
 DEFAULT_REVIEW = 15
 
 FLOOR = {"distill": 4, "struggle": 3, "review": 10}
-CEILING = {"distill": 14, "struggle": 9, "review": 25}
+CEILING = {"distill": 25, "struggle": 12, "review": 40}
 
 try:
     with open(STATE_FILE) as f:
@@ -57,14 +57,28 @@ try:
         with open(HISTORY_FILE) as f:
             hist_data = json.load(f)
         history = hist_data.get("history", []) if isinstance(hist_data, dict) else []
-        if isinstance(history, list) and len(history) >= 5:
-            last5 = history[-5:]
-            outcomes = [h.get("outcome", "") for h in last5 if isinstance(h, dict)]
-            if len(outcomes) == 5 and all(o == "nothing" for o in outcomes):
-                thresholds["distill"] = min(DEFAULT_DISTILL + 2, CEILING["distill"])
-                thresholds["struggle"] = min(DEFAULT_STRUGGLE + 1, CEILING["struggle"])
-                thresholds["review"] = min(DEFAULT_REVIEW + 5, CEILING["review"])
-            elif len(outcomes) == 5 and all(o == "acted" for o in outcomes):
+        if isinstance(history, list) and len(history) >= 3:
+            # Count consecutive streaks from the tail
+            nothing_streak = 0
+            for h in reversed(history):
+                if isinstance(h, dict) and h.get("outcome", "") == "nothing":
+                    nothing_streak += 1
+                else:
+                    break
+            acted_streak = 0
+            for h in reversed(history):
+                if isinstance(h, dict) and h.get("outcome", "") == "acted":
+                    acted_streak += 1
+                else:
+                    break
+
+            if nothing_streak >= 3:
+                # Proportional raise: +2 per 3 consecutive "nothing", up to ceiling
+                boost = (nothing_streak // 3) * 2
+                thresholds["distill"] = min(DEFAULT_DISTILL + boost, CEILING["distill"])
+                thresholds["struggle"] = min(DEFAULT_STRUGGLE + (boost // 2), CEILING["struggle"])
+                thresholds["review"] = min(DEFAULT_REVIEW + (boost * 3), CEILING["review"])
+            elif acted_streak >= 5:
                 thresholds["distill"] = max(DEFAULT_DISTILL - 1, FLOOR["distill"])
                 thresholds["struggle"] = max(DEFAULT_STRUGGLE - 1, FLOOR["struggle"])
                 thresholds["review"] = max(DEFAULT_REVIEW - 3, FLOOR["review"])
@@ -83,8 +97,18 @@ turn_tools = state.get("turn_tools", [])
 
 flags = []
 
+# Suppress flag if previous turn was mostly meta-review activity (Agent dispatch only).
+# This breaks the recursive loop where background-review triggers itself.
+meta_tools = {"Agent", "SendMessage", "Read", "Bash", "Grep", "Glob", "Edit"}
+non_meta_tools = [t for t in turn_tools if t not in meta_tools]
+is_meta_turn = (
+    len(turn_tools) > 0
+    and "Agent" in turn_tools
+    and len(non_meta_tools) <= 2
+)
+
 distill_threshold = thresholds["struggle"] if struggle >= 2 else thresholds["distill"]
-if per_turn >= distill_threshold:
+if per_turn >= distill_threshold and not is_meta_turn:
     flags.append(f"distill|per_turn={per_turn}|struggle={struggle}|threshold={distill_threshold}|tools={','.join(turn_tools[-10:])}")
 
 iters_since_review = cumulative - last_review

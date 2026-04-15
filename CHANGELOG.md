@@ -2,6 +2,51 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.8.0] - 2026-04-15 -- Knowledge Layer
+
+Two new commands and a validation gate that give the vault a compounding knowledge layer. Every query answered gets filed back as a permanent note, every knowledge note gets counter-arguments, and the system now tracks what's been human-verified vs agent-generated.
+
+Inspired by the "AI Knowledge Layer" thread from Shann Holmberg (llm-wikid). The vault already had 80% of the infrastructure (Engram retrieval, rules, domain scoping). This release fills four gaps: query answer persistence, a human-verification gate, semantic contradiction detection, and automatic adversarial review during ingestion.
+
+### Added
+
+- **`/wiki-query` command** (`modules/commands/commands/wiki-query.md`): queries the vault using Engram 4-layer retrieval (concept-index, filtered grep, Smart Connections, fallback), synthesizes a cited answer, and files it back as an atomic note in `60-Research/Outputs/`. Every filed note includes TLDR, cited sources, counter-arguments & gaps section, and confidence level. `reviewed: false` by default. The compounding mechanism: each query's filed answer enriches future queries.
+- **`/wiki-lint` command** (`modules/commands/commands/wiki-lint.md`): semantic lint that detects five types of vault drift: factual contradictions between notes, conceptual duplication under different names, naming drift for entities, stale content contradicted by newer notes, and semantic orphans (ideas nobody builds on). Uses Smart Connections MCP for clustering, then adversarial analysis per cluster. Read-only (never auto-corrects). Output to `00-Dashboard/lint-report.md`. Budget-capped: max 300 notes, 100 SC lookups, 20 clusters per run.
+- **Validation gate** (`reviewed` field): new frontmatter field required on `type: concept | knowledge | reference` notes. `false` = agent-generated, `true` = human-verified. Separates "what's in the vault" from "what the user has read and signed off on".
+  - `validate-write.sh`: non-blocking warning if field missing on eligible types
+  - `vault_health.py`: new `validation_gate` section in JSON output (eligible total, reviewed true/false/missing, % reviewed). Non-scoring, reporting only.
+  - `/health` command: "Validation Gate" section in output template
+  - `CLAUDE.md.template`: field in Required Frontmatter spec + "Validation Gate" subsection
+- **Counter-arguments in `/process`** (Step 3.5): mandatory `## Counter-arguments & gaps` section on every concept/knowledge/reference note created during processing. Three required sub-bullets: strongest counter-argument, what's missing, confidence. Never left empty. Prevents the vault from accumulating unquestioned ideas.
+
+### Changed
+
+- `modules/commands/commands/process.md`: added Step 3.5 (counter-arguments mandatory) and `reviewed: false` instruction in Step 3. Step 4 now reminds to apply the counter-arguments rule.
+- `modules/commands/commands/capture.md`: added `reviewed: false` instruction for concept/knowledge/reference note types in Step 2.
+- `modules/commands/commands/dump.md`: added `reviewed: false` instruction in note creation step.
+- `core/rules/auto-capture.md`: added `reviewed: false` to captured note YAML template. Added `/wiki-query` to the "When NOT to trigger" list (wiki-query already files back, no double capture).
+- `modules/vault-structure/templates/Knowledge-Note.md`: added `domain:`, `tags: []`, and `reviewed: false` fields to frontmatter (were missing, caused hook warnings). Added `## Counter-arguments & gaps` section to note body template.
+- `core/CLAUDE.md.template`: new "Validation Gate" subsection under Required Frontmatter. New "Knowledge Layer" command group (`/wiki-query`, `/wiki-lint`) in Vault Automation Commands. Updated `/process` and `/health` descriptions.
+- `modules/scripts-offload/commands/health.md`: added "Validation Gate (reviewed field)" section to output template between the score table and the activity section.
+
+### Fixed
+
+- **Recursive review loop** in `modules/enforcement-hooks/hooks/turn-boundary-check.sh`: the background-review agent dispatched ~10 tool calls per run, which crossed the distill threshold, triggering another review on the next turn, creating an infinite loop. Two fixes applied:
+  1. **Proportional threshold scaling**: instead of a fixed +2 boost after 5 consecutive "nothing" outcomes, now scales proportionally (+2 per 3 consecutive "nothing" in the streak). Ceiling raised from 14 to 25 for distill, 9 to 12 for struggle, 25 to 40 for cumulative review.
+  2. **Meta-turn suppression**: turns where the only substantive activity was dispatching an Agent (background-review) are no longer flagged as "trial-and-error". The distill check skips when the tool list consists primarily of Agent + standard tools with at most 2 incidental non-meta tools.
+
+### Architecture notes
+
+The knowledge layer has two dynamics that compound over time:
+
+1. **Query compounding** (`/wiki-query`): every answered question becomes a citable note. After 50 queries, a significant portion of new queries will partially answer themselves from filed Outputs, reducing retrieval cost and increasing answer consistency. The mechanism is the same as Karpathy's LLM wiki, but integrated into the existing Engram 4-layer retrieval rather than replacing it.
+
+2. **Adversarial ingestion** (`/process` Step 3.5): every knowledge note enters the vault with its strongest known counter-argument pre-registered. This is structural anti-sycophancy: not a check you run optionally (like `/bias-check`), but a default gate that runs on every ingestion. The insight from the llm-bias-bench (v1.7.0) was that sycophancy is hardest to catch when it enters as unquestioned knowledge rather than as output. Counter-arguments at ingestion time are the defense.
+
+The validation gate (`reviewed` field) creates a two-class system: agent-generated knowledge (default) and human-verified knowledge. The `/health` command reports the ratio without penalizing the score yet, treating it as a leading indicator. When the ratio of reviewed:true notes rises, the user can optionally start penalizing unreviewed notes in the health score.
+
+The recursive loop fix addresses a design flaw in v1.6.0's adaptive review system: the iteration counter couldn't distinguish "the agent did real work" from "the agent dispatched a review that did bookkeeping". Meta-turn suppression + proportional threshold scaling together prevent the loop from forming even with aggressive review schedules.
+
 ## [1.7.0] - 2026-04-14 -- Intra-Session Sycophancy Protection
 
 Second-vector coverage for the anti-sycophancy system. AS-1 through AS-6 protect against inter-session sycophancy (one session accepting prior output without challenge). This release adds protection against intra-session sycophancy (an LLM adopting whatever framing the user argued for in the same turn), grounded in the llm-bias-bench benchmark (Maritaca AI, April 2026).

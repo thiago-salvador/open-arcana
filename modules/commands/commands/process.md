@@ -28,10 +28,32 @@ For each material item:
 - Extract: decisions, action items, technical topics, people, insights, connections
 - Create atomic notes (300-500 words) with complete frontmatter
 - Use parallel agents to process multiple items simultaneously
+- For notes with `type: concept | knowledge | reference`: include `reviewed: false` in frontmatter (validation gate)
+
+### 3.5. Counter-arguments mandatory (concept/knowledge/research)
+
+For EVERY note created with `type: concept | knowledge | reference`, add a mandatory section:
+
+```markdown
+## Counter-arguments & gaps
+
+- **Strongest counter-argument:** {what would a serious critic say? what evidence pushes the other way?}
+- **What's missing:** {what data/experiment/contrarian voice wasn't included? where is the source material silent?}
+- **Confidence:** high | medium | low — {brief justification}
+```
+
+Rules for this section:
+- **Never leave empty.** If the material has no obvious counter-argument, write `No direct counter-argument found in processed sources. Possible gap: {what to investigate next}.`
+- **If stale or controversial:** mark `Confidence: low` and explain.
+- **If descriptive (not opinionated):** still list gaps (what the source didn't cover).
+- **Don't fabricate counter-arguments.** If the material genuinely represents technical consensus and you can't identify a real counter-argument, state explicitly: "Apparent consensus in sources; no substantive counter-argument identified. Review if new sources emerge."
+
+Purpose: prevent the vault from accumulating unquestioned ideas. Knowledge without a registered counter-argument is knowledge that was never stress-tested.
 
 ### 4. Create concept notes
 - If the material reveals cross-cutting concepts (feature, strategy, pattern): create a separate concept note synthesizing across sources
 - Link bidirectionally
+- Apply the counter-arguments rule from 3.5
 
 ### 5. Create person notes
 - If new people appear: create in `70-People/`

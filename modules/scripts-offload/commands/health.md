@@ -68,6 +68,14 @@ Vault Health Report -- YYYY-MM-DD
 | Daily Notes | +N | Today: yes/no, Recent log: yes/no |
 | WIP | +N | Updated: yes/no |
 
+## Validation Gate (reviewed field)
+Eligible notes (type=concept|knowledge|reference): N
+- reviewed: true -> N (X%)
+- reviewed: false -> N (X%)
+- missing -> N (X%, legacy)
+
+Interpretation: % reviewed measures how much of the knowledge layer is human-verified vs auto-generated. Missing = legacy (pre-gate). New notes without the field trigger a hook warning.
+
 ## Activity (last 7 days)
 N notes modified, N in last 24h
 

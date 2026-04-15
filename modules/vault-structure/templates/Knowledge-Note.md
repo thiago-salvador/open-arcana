@@ -2,9 +2,12 @@
 title: "<% tp.file.title %>"
 summary: ""
 type: knowledge
+domain: 
+tags: []
 tech_stack: []
 status: draft
 created: <% tp.date.now("YYYY-MM-DD") %>
+reviewed: false
 ---
 
 # <% tp.file.title %>
@@ -21,6 +24,12 @@ created: <% tp.date.now("YYYY-MM-DD") %>
 ## Gotchas
 
 -
+
+## Counter-arguments & gaps
+
+- **Strongest counter-argument:**
+- **What's missing:**
+- **Confidence:** medium
 
 ## Related Links
 

@@ -69,6 +69,14 @@ else
   if [[ -n "$DOMAIN_VAL" ]] && ! echo " $VALID_DOMAINS " | grep -q " $DOMAIN_VAL "; then
     ERRORS="${ERRORS}Invalid domain: '$DOMAIN_VAL'. "
   fi
+
+  # Check validation gate: reviewed field required on knowledge-producing types
+  REVIEWED_TYPES="concept knowledge reference"
+  if [[ -n "$TYPE_VAL" ]] && echo " $REVIEWED_TYPES " | grep -q " $TYPE_VAL "; then
+    if ! echo "$FM" | grep -q "^reviewed:"; then
+      ERRORS="${ERRORS}VALIDATION GATE: 'reviewed' field missing on type=${TYPE_VAL} note. Add 'reviewed: false' (agent-generated) or 'reviewed: true' (human-verified). "
+    fi
+  fi
 fi
 
 # Check 2: At least one wikilink (skip Daily Notes and index files)

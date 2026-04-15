@@ -82,6 +82,7 @@ created: YYYY-MM-DD
 - Distribute the dump content into the correct template sections
 - Add wikilinks for people, projects, and concepts mentioned that exist in the vault
 - DO NOT invent content beyond what was said in the dump
+- If `type` in {concept, knowledge, reference}: add `reviewed: false` to frontmatter (validation gate)
 
 ### 4. Update context
 - Read the destination folder's `index.md` and add entry for the new note

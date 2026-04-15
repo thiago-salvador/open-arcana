@@ -43,10 +43,22 @@ domain: {{DOMAINS}}
 tags: []
 status: draft | active | evergreen | paused | completed | archived | superseded | deprecated
 created: YYYY-MM-DD
+reviewed: false   # REQUIRED if type in {concept, knowledge, reference}. false = agent-generated, true = human-verified
 ---
 ```
 
 `summary` is REQUIRED. It's what the agent scans before reading the full file.
+
+### Validation Gate (`reviewed` field)
+
+Every note of type `concept`, `knowledge`, or `reference` must include `reviewed: true|false`. This separates agent-generated knowledge (default: `false`) from human-verified knowledge (`true`, set manually after review).
+
+- Notes created by commands (`/wiki-query`, `/process`, `/capture`, `/dump`): set `reviewed: false`
+- Legacy notes (pre-gate): field absent, grandfathered. `/health` reports count separately.
+- The `validate-write.sh` hook warns (non-blocking) if the field is missing on those types.
+- `/health` reports % reviewed as an independent signal (does not penalize the score yet).
+
+Purpose: separate "what's in the vault" from "what the user has actually read and signed off on". Prevents agent-generated content from becoming silent confidence.
 
 ## File Format
 
@@ -61,8 +73,9 @@ All commands are in `.claude/commands/`. Each .md file is a slash command. Main 
 
 **Daily:** `/start` (morning briefing), `/end` (day closure), `/recap` (read-only summary)
 **Weekly:** `/weekly` (7-day review), `/contrarian` (anti-sycophancy analysis)
-**Capture:** `/dump` (brain dump + auto-routing), `/capture` (guided), `/process` (atomize material)
-**Vault:** `/health` (audit), `/scan` (external files), `/connections` (cross-domain links), `/link-check` (missing wikilinks)
+**Capture:** `/dump` (brain dump + auto-routing), `/capture` (guided), `/process` (atomize material + counter-args on concept/research/knowledge)
+**Knowledge Layer:** `/wiki-query` (query vault + file-back to 60-Research/Outputs/), `/wiki-lint` (detect contradictions/duplications)
+**Vault:** `/health` (audit + validation gate report), `/scan` (external files), `/connections` (cross-domain links), `/link-check` (missing wikilinks)
 
 ## Cross-Domain Connections
 
