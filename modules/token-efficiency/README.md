@@ -1,8 +1,8 @@
 # Token Efficiency Module
 
-17 rules + session discipline for minimizing token waste in Claude Code sessions. Based on empirical analysis of how Claude Code handles context windows, compaction, caching, and tool calls. Includes a weekly token analysis script.
+18 rules + session discipline for minimizing token waste in Claude Code sessions. Based on empirical analysis of how Claude Code handles context windows, compaction, caching, and tool calls. Includes a weekly token analysis script.
 
-## The 17 TE Rules
+## The 18 TE Rules
 
 ### TE-1: MicroCompact scope
 MicroCompact only compresses Bash, FileRead, and Grep results. MCP tool results (Notion, Teams, Gmail, etc.) accumulate uncompressed until AutoCompact triggers. Don't chain 5+ MCP calls without summarizing intermediate results.
@@ -55,8 +55,11 @@ Since Claude Code 2.1.94, the default effort level changed from medium to high. 
 ### TE-17: MCP result size override
 Since Claude Code 2.1.91, MCP tools can override result truncation via `_meta["anthropic/maxResultSizeChars"]` (up to 500K). Large untruncated MCP results consume more context. Summarize before proceeding if only part of the result is needed.
 
+### TE-18: Subagent delegation test
+Before executing work in the main context, ask: "Will I need this tool output again, or just the conclusion?" If just the conclusion, delegate to a subagent. Complements TE-15 (budget cap): TE-15 says when to stop, TE-18 says when to start.
+
 ### Session Discipline (companion rule)
-Monitors context accumulation and suggests new sessions before auto-compact triggers. Warns at 30 tool calls, urgent at 50. Prefers new sessions over `/clear` (preserves history). See `rules/session-discipline.md`.
+Post-turn decision tree (continue, rewind, compact, clear, new session), rewind as primary correction tool, proactive compaction with steering, and context rot awareness. Warns at 30 tool calls, urgent at 50. Prefers new sessions over `/clear` (preserves history). See `rules/session-discipline.md`.
 
 ### Token Analysis Script
 `tools/token_analysis.py` analyzes `~/.claude/projects/` JSONL files and generates a cost report. Integrated into `/weekly` as the Token Economy check. Run with `SINCE_DAYS=7 python3 token_analysis.py`.
@@ -74,8 +77,8 @@ At ~50% context window or before compaction:
 
 ```
 modules/token-efficiency/
-  rules/token-efficiency.md     # Full rule definitions (TE-1 through TE-17)
-  rules/session-discipline.md   # Session length monitoring + new session suggestions
+  rules/token-efficiency.md     # Full rule definitions (TE-1 through TE-18)
+  rules/session-discipline.md   # Session management: decision tree, rewind, compaction, signals
   README.md                     # This file
 
 tools/

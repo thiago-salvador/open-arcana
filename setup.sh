@@ -50,7 +50,7 @@ MODULE_NAMES=(
 
 MODULE_DESCS=(
   "6 rules that prevent AI from agreeing without evidence."
-  "17 rules to minimize context waste and API costs."
+  "18 rules to minimize context waste and API costs."
   "Validates frontmatter, enforces daily notes, checks writes."
   "Blocks prompt injection in memory files, guards people data."
   "Opinionated folder structure with 18 note templates."

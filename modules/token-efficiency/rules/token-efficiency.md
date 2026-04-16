@@ -72,6 +72,11 @@ Since Claude Code 2.1.94, the default effort level changed from medium to high f
 ## MCP result size override (rule TE-17)
 Since Claude Code 2.1.91, MCP tools can annotate results with `_meta["anthropic/maxResultSizeChars"]` (up to 500K) to prevent truncation of large payloads like database schemas. When building custom MCPs or working with MCPs that return large results (Smart Connections, Notion queries with many pages), be aware that untruncated large results consume more context. If a large MCP result is only partially needed, summarize it before proceeding.
 
+## Subagent delegation test (rule TE-18)
+Before executing work in the main context, ask: "Will I need this tool output again, or just the conclusion?" If just the conclusion, delegate to a subagent. The subagent does the heavy lifting in its own context and only the final result comes back to the parent. Classic examples: verifying results against a spec, reading an external codebase and summarizing, writing docs based on git changes, running a test suite and reporting pass/fail.
+
+This complements TE-15 (budget cap) with a decision heuristic: TE-15 tells you WHEN TO STOP dispatching subagents, TE-18 tells you WHEN TO START.
+
 ## Enforcement (auto-check)
 
 Before each compaction or when reaching ~50% of the context window:

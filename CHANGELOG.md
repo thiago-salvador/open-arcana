@@ -2,6 +2,33 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.9.0] - 2026-04-15 -- Session Intelligence
+
+Upgrades the token-efficiency module with context management strategies from Anthropic's official Claude Code session management guide (Thariq Shaukat, April 2026). Adds a post-turn decision framework, rewind-first correction pattern, proactive compaction with steering, and a subagent delegation heuristic.
+
+### Added
+
+- **TE-18: Subagent delegation test** (`rules/token-efficiency.md`): "Will I need this tool output again, or just the conclusion?" If just the conclusion, delegate to a subagent. Complements TE-15 (budget cap) with a decision heuristic: TE-15 tells you when to stop dispatching subagents, TE-18 tells you when to start. Classic examples: verifying results against a spec, reading an external codebase and summarizing, writing docs based on git changes.
+- **Post-turn decision tree** (`rules/session-discipline.md`): five options at every decision point (Continue, Rewind, Compact, Clear, New session) with a table showing when each is appropriate and its context cost.
+- **Rewind as primary correction** (`rules/session-discipline.md`): when an approach fails, rewind (esc esc) to just after the file reads and re-prompt with learnings instead of correcting inline. Includes 3 triggers for the agent to suggest rewind, plus the "summarize from here" handoff pattern.
+- **Proactive compaction with steering** (`rules/session-discipline.md`): `/compact focus on X, drop Y` lets users direct what the model preserves during compaction. With 1M context, there's time to compact before auto-compact fires. Includes guidance on when compact beats a new session.
+- **Failed approach signal** (`rules/session-discipline.md`): new monitoring signal (item 5) that suggests rewind when an approach was attempted and failed.
+
+### Changed
+
+- `rules/session-discipline.md`: main rule now explains the mechanism behind context rot (attention spread, model at lowest intelligence during compaction, inability to predict future work direction). "New session vs /clear" section replaced with 3-way comparison table (new session vs /clear vs /compact). Warning messages at 30 and 50 tool calls now include compact as an option.
+- `modules/token-efficiency/README.md`: updated rule count from 17 to 18, added TE-18 entry, updated session-discipline companion rule description, updated file listing.
+- `README.md`: updated Token Efficiency module description from 17 to 18 rules.
+- `setup.sh`: updated module description from 17 to 18 rules.
+
+### Architecture notes
+
+The session intelligence upgrade addresses the gap between "rules that prevent waste" (TE-1 through TE-17) and "rules that guide active context decisions." Previous versions told the agent when to warn about context size but didn't provide a framework for what to do about it. The decision tree gives both the agent and the user a shared vocabulary for context management.
+
+The rewind pattern is particularly valuable because it removes failed attempts from context entirely rather than accumulating them. In a 1M context window, this matters less for space but more for attention: context rot means old failed approaches actively degrade the quality of new attempts.
+
+Source: Anthropic's official Claude Code session management guide by Thariq Shaukat (Claude Code team), published April 2026.
+
 ## [1.8.0] - 2026-04-15 -- Knowledge Layer
 
 Two new commands and a validation gate that give the vault a compounding knowledge layer. Every query answered gets filed back as a permanent note, every knowledge note gets counter-arguments, and the system now tracks what's been human-verified vs agent-generated.

@@ -11,7 +11,7 @@ Built from a production system running 16 hooks, 27 commands, 500+ automated hea
 | Module | What it does |
 |--------|-------------|
 | **Anti-Sycophancy Protocol** | 6 rules that prevent AI from agreeing without evidence. Confidence tags, challenge-previous, conflict reports. |
-| **Token Efficiency** | 17 rules for context window management and cost control. Cache awareness, retrieval budgets, output discipline. |
+| **Token Efficiency** | 18 rules for context window management and cost control. Cache awareness, retrieval budgets, output discipline, subagent delegation. |
 | **Enforcement Hooks** | Auto-validates frontmatter, enforces daily notes, checks writes before they happen. |
 | **Security Hooks** | Blocks prompt injection in memory files, guards against fabricated people data. |
 | **Vault Structure** | Opinionated folder system with 19 note templates + WIP hub for session continuity. One command creates the full tree. |
