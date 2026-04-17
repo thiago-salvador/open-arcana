@@ -1,0 +1,41 @@
+name: integrity
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  arcana-integrity:
+    name: arcana-integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # integrity check needs git tags
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run integrity check
+        run: |
+          python3 tools/arcana-integrity.py
+
+      - name: Emit JSON report (for debugging)
+        if: always()
+        run: |
+          python3 tools/arcana-integrity.py --json > integrity-report.json || true
+          cat integrity-report.json || true
+
+      - name: Upload JSON report as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integrity-report
+          path: integrity-report.json
+          retention-days: 7

@@ -16,7 +16,7 @@ Built from a production system running 16 hooks, 27 commands, 500+ automated hea
 | **Security Hooks** | Blocks prompt injection in memory files, guards against fabricated people data. |
 | **Vault Structure** | Opinionated folder system with 19 note templates + WIP hub for session continuity. One command creates the full tree. |
 | **Retrieval System** | 4-layer lookup inspired by DeepSeek's Engram paper. Concept index, filtered grep, semantic search, fallback. |
-| **Slash Commands** | 22 commands: /start, /end, /weekly, /health, /dump, /capture, /distill, /recall, /tree, /model-review, and more. |
+| **Slash Commands** | 27 commands: /start, /end, /weekly, /health, /dump, /capture, /distill, /recall, /tree, /model-review, /wiki-query, /wiki-lint, /bias-check, /analytics, and more. |
 | **Connected Sources** | Templates for orchestrating 16+ MCP data sources (Teams, Notion, Calendar, Read.AI, etc). |
 | **Scheduled Tasks** | Patterns for autonomous recurring agents: morning briefing, end-of-day, weekly review. |
 | **Vault Health** | 7-component weighted health score (0-100) for frontmatter, index, MOCs, connections, daily notes, WIP, and memory. |
@@ -222,12 +222,22 @@ Removes all Open Arcana files and restores your original settings.local.json fro
 
 ## Contributing
 
-Contributions welcome. Some ideas:
+Contributions welcome. Before opening a PR, read [CONTRIBUTING.md](CONTRIBUTING.md) for the PR checklist and architecture discipline protocol. The full system architecture is documented in [ARCHITECTURE.md](ARCHITECTURE.md); use it as the reference for where any new hook, rule, command, or module should live.
+
+Some ideas:
 
 - **Community packages** (git workflow, citation management, spaced repetition, journaling). See [docs/packages.md](docs/packages.md) and the [example package](examples/package/).
 - Adapters for other AI tools (Cursor, Windsurf, Copilot)
 - Windows native support (no WSL)
 - Translations for non-English rule sets
+
+### Integrity check
+
+Every PR runs [`tools/arcana-integrity.py`](tools/arcana-integrity.py) in CI ([`.github/workflows/integrity.yml`](.github/workflows/integrity.yml)). The check compares the filesystem against `ARCHITECTURE.md` and fails the build if they drift. Run it locally before pushing:
+
+```bash
+python3 tools/arcana-integrity.py
+```
 
 ## License
 

@@ -6,7 +6,7 @@ Open Arcana is modular. Core is always installed; everything else is optional. A
 
 **CLAUDE.md template**: Master configuration file that tells Claude Code how to work with your vault. Includes retrieval rules, frontmatter schema, vault structure, and maintenance rules.
 
-**Core Rules** (`core-rules.md`): 12 operational rules covering logging discipline, data validation, file handling, cross-referencing, and pre-delivery checks.
+**Core Rules** (`core-rules.md`): 11 operational rules covering logging discipline, data validation, file handling, cross-referencing, and pre-delivery checks.
 
 **Session Scan Hook**: Runs on session start. Reports recently modified files, loads the daily note, and injects retrieval context.
 
@@ -29,19 +29,21 @@ Open Arcana is modular. Core is always installed; everything else is optional. A
 Also includes a ConflictReport template for documenting disagreements.
 
 ### token-efficiency
-**14 rules for context window management and cost control.**
+**18 rules + session-discipline for context window management and cost control.**
 
-Covers: MicroCompact scope awareness, post-compact file restoration, prompt cache management, boot payload minimization, cross-agent scratchpads, web search cost tracking, fast mode awareness, context window math, output discipline, targeted reads, tool call consolidation, graduated response length, agent prompt efficiency, and anti-speculative exploration.
+Covers: MicroCompact scope awareness, post-compact file restoration, prompt cache management, boot payload minimization, cross-agent scratchpads, web search cost tracking, fast mode awareness, context window math, output discipline, targeted reads, tool call consolidation, graduated response length, agent prompt efficiency, anti-speculative exploration, subagent budget cap, effort level awareness, MCP result size override, and subagent delegation test. Plus a companion `session-discipline.md` rule file covering post-turn decision tree, rewind-first correction, and proactive compaction.
 
 ## Enforcement
 
 ### enforcement-hooks
-**4 hooks that run automatically on Edit/Write operations.**
+**6 hooks across Pre/Post/Stop/UserPromptSubmit events.**
 
-- `enforce-daily-note.sh`: Blocks tool use if today's daily note doesn't exist
-- `validate-frontmatter.sh`: Checks frontmatter structure before writes
-- `validate-write.sh`: Validates note content after writes (required fields, domain tags)
-- `stop-check-dn.sh`: Warns if daily note has no log entries
+- `enforce-daily-note.sh` (PreToolUse): Blocks tool use if today's daily note doesn't exist
+- `validate-frontmatter.sh` (PreToolUse Write): Checks frontmatter structure before writes
+- `validate-write.sh` (PostToolUse Write|Edit): Validates note content after writes (required fields, domain tags, em/en dashes)
+- `stop-check-dn.sh` (Stop): Warns if daily note has no timestamped log entries
+- `iteration-counter.sh` (PostToolUse wildcard): Tracks iteration count and struggle signals for adaptive background-review trigger
+- `turn-boundary-check.sh` (UserPromptSubmit): Reads iteration state and emits flag file when thresholds are crossed
 
 ### security-hooks
 **4 hooks for memory safety and data integrity.**
@@ -54,7 +56,7 @@ Covers: MicroCompact scope awareness, post-compact file restoration, prompt cach
 ## Vault Management
 
 ### vault-structure
-**Opinionated folder structure with 18 note templates.**
+**Opinionated folder structure with 19 note templates.**
 
 Creates a complete vault directory tree:
 ```
@@ -63,7 +65,7 @@ Creates a complete vault directory tree:
 99-Inbox/        Daily-Notes/   MOCs/
 ```
 
-Includes templates for: Daily Notes, Meetings, Projects, People, Partnerships, Events, Articles, Social Posts, Decision Records, Dev Logs, Error Solutions, Hub Notes, Knowledge Notes, MOCs, Project Indexes, Toolbox Notes, Conflict Reports, and Inbox Items.
+Includes templates for: Daily Notes, Meetings, Projects, People, Partnerships, Events, Articles, Social Posts, Decision Records, Dev Logs, Error Solutions, Hub Notes, Knowledge Notes, MOCs, Project Indexes, Toolbox Notes, Conflict Reports, Inbox Items, and WIP (session-continuity hub).
 
 ### retrieval-system
 **4-layer lookup inspired by DeepSeek's Engram paper.**
@@ -80,7 +82,7 @@ Includes: boot-protocol rules, prefetch-context hook, and dashboard templates (c
 ## Automation
 
 ### commands
-**18 slash commands for daily workflows.**
+**26 slash commands for daily workflows.** (Plus `/analytics` from the analytics module and 2 script-backed overrides from `scripts-offload`.)
 
 | Command | What it does |
 |---------|-------------|
@@ -97,11 +99,21 @@ Includes: boot-protocol rules, prefetch-context hook, and dashboard templates (c
 | `/connections` | Cross-domain semantic search |
 | `/link-check` | Insert missing wikilinks in recent notes |
 | `/contrarian` | Anti-sycophancy weekly analysis |
+| `/bias-check` | Latent-sycophancy check for opinion drafts |
 | `/audit-gaps` | Detect missing people, projects, tasks |
 | `/post-meeting` | Process meeting transcripts |
 | `/person` | Full briefing on a person |
+| `/distill` | Extract reusable workflows from current session |
+| `/recall` | Cross-session FTS5 search (uses `tools/session_index.py`) |
+| `/tree` | Visualize session decision tree (branches, depth) |
+| `/model-review` | Review agent model preferences + stale memories |
+| `/wiki-query` | Ask the vault a question, file the answer back to `60-Research/Outputs/` |
+| `/wiki-lint` | Detect vault drift (contradictions, duplication, stale content) |
+| `/background-review` | Adaptive background review triggered by iteration thresholds |
 | `/doc-release` | Update docs after code changes |
 | `/ship` | Release pipeline (test, review, commit, PR) |
+
+Full table with interactivity flags and source module: see [`../ARCHITECTURE.md`](../ARCHITECTURE.md) § Slash commands.
 
 ### connected-sources
 **Template for orchestrating MCP data sources.**

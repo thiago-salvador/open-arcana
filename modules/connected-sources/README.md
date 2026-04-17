@@ -26,7 +26,7 @@ connected-sources/
 1. Copy `rules/connected-sources.md.template` to your vault's `.claude/rules/connected-sources.md`
 2. Replace placeholders:
    - `{{NOTION_DB_ID}}` - Your Notion task database ID
-   - `{{MS_GRAPH_MCP_PATH}}` - Path to your Microsoft Graph MCP server
+   - `{{MS_GRAPH_PATH}}` - Path to your Microsoft Graph MCP server
 3. Remove sources you don't use (e.g., if you don't use Teams, remove that row)
 4. Add sources specific to your setup (e.g., Slack, Discord, Jira)
 5. Update the cross-referencing rules to match your vault folder names
@@ -36,7 +36,7 @@ connected-sources/
 | Placeholder | Description | Example |
 |-------------|-------------|---------|
 | `{{NOTION_DB_ID}}` | Notion database ID for tasks | `abc123def456...` |
-| `{{MS_GRAPH_MCP_PATH}}` | Path to MS Graph MCP server | `$HOME/tools/ms-graph-mcp/index.js` |
+| `{{MS_GRAPH_PATH}}` | Path to MS Graph MCP server | `$HOME/tools/ms-graph-mcp/index.js` |
 
 ## Cross-referencing Patterns
 

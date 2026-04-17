@@ -2,6 +2,37 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+
+- **`ARCHITECTURE.md`** at repo root: canonical master doc describing every hook, rule, command, module, tool, template, template variable, event chain, file-ownership mapping, and governance protocol. Replaces the high-level `docs/architecture.md` primer, which is retained as a short pointer.
+- **`tools/arcana-integrity.py`**: stdlib-only drift detector that compares the filesystem against `ARCHITECTURE.md` and flags mismatches. Checks: rule counts (AS, TE, CT, CSR), hook inventory, command inventory, module count, version parity between `setup.sh` and `CHANGELOG.md`, git tag parity, broken path references, template variable drift, README count drift. Emits human or `--json` output. Exit 0 on clean, 1 on ERROR.
+- **`CONTRIBUTING.md`** at repo root: PR checklist, architecture discipline protocol, CHANGELOG format, release process, code style (bash 3.2 compat, Python stdlib only, markdown conventions).
+- **`.github/workflows/integrity.yml`**: CI workflow that runs `arcana-integrity.py` on every push and PR. Uploads the JSON report as an artifact for debugging.
+
+### Changed
+
+- `docs/architecture.md`: condensed to a short primer that points contributors to `ARCHITECTURE.md` at repo root for the canonical inventory and governance rules. Retains the 3-mechanism overview diagram.
+- `docs/modules.md`: corrected drift in counts (core rules 12 -> 11, TE rules 14 -> 18, commands 18 -> 26, templates 18 -> 19, enforcement-hooks 4 -> 6). Added missing commands (`/bias-check`, `/distill`, `/recall`, `/tree`, `/model-review`, `/wiki-query`, `/wiki-lint`, `/background-review`) to the command table. Added pointer to canonical table in `ARCHITECTURE.md`.
+- `README.md`: updated command count claim (22 -> 27 when all modules active). Added Contributing section pointer to `CONTRIBUTING.md` and `ARCHITECTURE.md`. Added Integrity check subsection.
+- `setup.sh`: bumped `VERSION=` from 1.8.0 to 1.9.0 to match the latest CHANGELOG entry. The integrity check now enforces this parity.
+- `modules/connected-sources/README.md` and `modules/connected-sources/rules/connected-sources.md.template`: renamed template variable from `{{MS_GRAPH_MCP_PATH}}` to `{{MS_GRAPH_PATH}}` to match the canonical name used across 8+ other files (command prompts and scheduled-tasks). Previously a user substituting vars would have ended up with an unsubstituted placeholder.
+
+### Fixed
+
+- **Historical git tags**: 8 versions (`v1.0.6`, `v1.1.0`, `v1.1.1`, `v1.2.0`, `v1.3.0`, `v1.6.0`, `v1.7.0`, `v1.8.0`) were missing git tags despite having CHANGELOG entries. Tags now created retroactively pointing at their release commits. Going forward, the integrity check flags any CHANGELOG entry without a matching tag.
+
+### Architecture notes
+
+The governance infrastructure is organized in three layers to prevent `ARCHITECTURE.md` from silently drifting into obsolescence (the failure mode that killed previous attempts at a central doc):
+
+1. **Mechanical** (`arcana-integrity.py` + CI): catches drift that is machine-detectable. Missing files, wrong counts, broken paths, version mismatches, undocumented template variables.
+2. **Disciplinary** (`CONTRIBUTING.md` PR checklist): catches drift that is NOT machine-detectable. Semantic changes to a rule, event rebinding of a hook, behavior changes in a command. The checklist is what the reviewer runs.
+3. **Documental** (`ARCHITECTURE.md § Changelog` + CHANGELOG `## [Unreleased]`): every structural edit leaves a trace. A doc that changes without a corresponding entry is itself a drift signal.
+
+The decision to put `ARCHITECTURE.md` at repo root (not `docs/`) is deliberate: GitHub renders it alongside README and CHANGELOG, and open-source convention makes root-level `ARCHITECTURE.md` the first thing contributors look for when onboarding. `docs/architecture.md` remains as a primer for readers who come in via the docs index.
+
 ## [1.9.0] - 2026-04-15 -- Session Intelligence
 
 Upgrades the token-efficiency module with context management strategies from Anthropic's official Claude Code session management guide (Thariq Shaukat, April 2026). Adds a post-turn decision framework, rewind-first correction pattern, proactive compaction with steering, and a subagent delegation heuristic.

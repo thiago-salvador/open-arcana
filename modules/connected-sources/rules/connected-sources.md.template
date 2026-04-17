@@ -46,7 +46,7 @@ description: "External data sources and cross-referencing rules"
 - Adjust scoping based on which MCPs you need globally vs. per-project.
 
 ### Microsoft Graph
-- Server path: `{{MS_GRAPH_MCP_PATH}}`
+- Server path: `{{MS_GRAPH_PATH}}`
 - Token expires in long sessions (~1h). If you get 401/403 on Teams/Outlook/Calendar: token expired. Workaround: restart session or re-auth.
 - Calendars.ReadWrite is active (POST to create events). Created events are always personal.
 
