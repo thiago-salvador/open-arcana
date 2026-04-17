@@ -639,4 +639,4 @@ Community packages have the same template variable access as built-in modules.
 
 Every structural edit to `ARCHITECTURE.md` records a line here. Format: `YYYY-MM-DD — <summary> (commit `<short-sha>`)`.
 
-- 2026-04-17 — Initial master doc. Migrated from `docs/architecture.md` (high-level) to root-level canonical ARCHITECTURE.md with full inventory, governance, drift prevention, and integrity check spec.
+- 2026-04-17 — Initial master doc. Migrated from `docs/architecture.md` (high-level) to root-level canonical ARCHITECTURE.md with full inventory, governance, drift prevention, and integrity check spec. Released as v1.10.0 (Governance Infrastructure).

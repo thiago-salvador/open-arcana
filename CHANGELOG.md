@@ -2,7 +2,7 @@
 
 All notable changes to Open Arcana are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [1.10.0] - 2026-04-17 -- Governance Infrastructure
 
 ### Added
 
